@@ -589,6 +589,12 @@ nav {
     display: flex;
 }
 
+.admin-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
 .admin-sidebar {
     width: 280px;
     background: #1e293b;
@@ -627,8 +633,9 @@ nav {
 
 .admin-main {
     flex-grow: 1;
-    padding: 50px;
+    padding: 30px;
     overflow-y: auto;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .btn-logout {
@@ -829,7 +836,14 @@ textarea.q-text {
 }
 
 .form-group {
-    margin: 20px 0;
+    margin: 10px 0;
+}
+
+.admin-form-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
 }
 
 .form-group label {

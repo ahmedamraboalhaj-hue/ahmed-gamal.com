@@ -185,9 +185,30 @@ function renderContent() {
         examsList.innerHTML += `
             <div class="item-card exam-card">
                 <div class="item-icon"><i class="fas fa-file-signature"></i></div>
-                <h4>${exam.title}</h4>
-                <p>${exam.questions.length} سؤال</p>
-                <button class="btn-primary" onclick="startExam('${exam.id}')">بدأ الاختبار</button>
+                <div class="item-info">
+                    <h4>${exam.title}</h4>
+                    <p>${exam.questions.length} سؤال</p>
+                    <button class="btn-primary w-100" onclick="startExam('${exam.id}')">بدأ الاختبار</button>
+                </div>
+            </div>
+        `;
+    });
+
+    // Files
+    const filesList = document.getElementById('files-list');
+    const filteredFiles = appData.files.filter(f => f.grade === currentState.selectedGrade);
+    filesList.innerHTML = filteredFiles.length ? '' : '<p class="empty-msg">لا يوجد مذكرات مضافة حالياً</p>';
+    filteredFiles.forEach(file => {
+        filesList.innerHTML += `
+            <div class="item-card">
+                <div class="item-icon" style="height: 150px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05);">
+                    <i class="fas fa-file-pdf" style="font-size: 3rem; color: var(--primary-light);"></i>
+                </div>
+                <div class="item-info">
+                    <h4>${file.title}</h4>
+                    <p>متوفر الآن للتحميل أو العرض</p>
+                    <a href="${file.url}" target="_blank" class="btn-primary w-100" style="text-decoration: none; display: block; text-align: center;">تحميل / عرض</a>
+                </div>
             </div>
         `;
     });
@@ -308,44 +329,50 @@ function renderAdminSection(section) {
     if (section === 'add-lesson') {
         main.innerHTML = `
             <h3>إضافة درس جديد</h3>
-            <div class="form-group">
-                <label>رابط اليوتيوب</label>
-                <input type="text" id="lesson-url" placeholder="https://youtube.com/...">
+            <div class="admin-form-container">
+                <div class="form-group">
+                    <label>رابط اليوتيوب</label>
+                    <input type="text" id="lesson-url" placeholder="https://youtube.com/...">
+                </div>
+                <div class="form-group">
+                    <label>عنوان الدرس</label>
+                    <input type="text" id="lesson-title" placeholder="أدخل عنوان الفيديو">
+                </div>
+                <div class="form-group">
+                    <label>وصف الفيديو / رقم الوحدة</label>
+                    <input type="text" id="lesson-desc" placeholder="مثلاً: شرح الوحدة الأولى">
+                </div>
+                <div class="form-group">
+                    <label>المرحلة</label>
+                    <select id="lesson-grade">
+                        <option value="3mid">الصف الثالث الإعدادي</option>
+                        <option value="1sec">الصف الأول الثانوي</option>
+                        <option value="2sec">الصف الثاني الثانوي</option>
+                        <option value="3sec">الصف الثالث الثانوي</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group">
-                <label>عنوان الدرس</label>
-                <input type="text" id="lesson-title" placeholder="أدخل عنوان الفيديو">
-            </div>
-            <div class="form-group">
-                <label>وصف الفيديو / رقم الوحدة</label>
-                <input type="text" id="lesson-desc" placeholder="مثلاً: شرح الوحدة الأولى">
-            </div>
-            <div class="form-group">
-                <label>المرحلة</label>
-                <select id="lesson-grade">
-                    <option value="3mid">الصف الثالث الإعدادي</option>
-                    <option value="1sec">الصف الأول الثانوي</option>
-                    <option value="2sec">الصف الثاني الثانوي</option>
-                    <option value="3sec">الصف الثالث الثانوي</option>
-                </select>
-            </div>
-            <button class="btn-primary" onclick="saveNewLesson()">حفظ الدرس</button>
+            <button class="btn-primary" onclick="saveNewLesson()">
+                <i class="fas fa-save"></i> حفظ الدرس
+            </button>
         `;
     } else if (section === 'add-exam') {
         main.innerHTML = `
             <h3>إضافة اختبار جديد</h3>
-            <div class="form-group">
-                <label>عنوان الاختبار</label>
-                <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل">
-            </div>
-            <div class="form-group">
-                <label>المرحلة</label>
-                <select id="exam-grade">
-                    <option value="3mid">الصف الثالث الإعدادي</option>
-                    <option value="1sec">الصف الأول الثانوي</option>
-                    <option value="2sec">الصف الثاني الثانوي</option>
-                    <option value="3sec">الصف الثالث الثانوي</option>
-                </select>
+            <div class="admin-form-container">
+                <div class="form-group">
+                    <label>عنوان الاختبار</label>
+                    <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل">
+                </div>
+                <div class="form-group">
+                    <label>المرحلة</label>
+                    <select id="exam-grade">
+                        <option value="3mid">الصف الثالث الإعدادي</option>
+                        <option value="1sec">الصف الأول الثانوي</option>
+                        <option value="2sec">الصف الثاني الثانوي</option>
+                        <option value="3sec">الصف الثالث الثانوي</option>
+                    </select>
+                </div>
             </div>
             <div id="questions-container">
                 <h4>الأسئلة</h4>
@@ -371,12 +398,45 @@ function renderAdminSection(section) {
                     </div>
                 </div>
             </div>
-            <button class="btn-secondary" onclick="addNewQuestionBlock()" style="margin-bottom: 20px;">
-                <i class="fas fa-plus"></i> إضافة سؤال جديد
-            </button>
-            <br>
-            <button class="btn-primary w-100" onclick="saveNewExam()">حفظ الاختبار بالكامل</button>
+            <div class="hero-btns" style="margin-top: 20px;">
+                <button class="btn-secondary" onclick="addNewQuestionBlock()">
+                    <i class="fas fa-plus"></i> إضافة سؤال جديد
+                </button>
+                <button class="btn-primary" onclick="saveNewExam()">
+                    <i class="fas fa-save"></i> حفظ الاختبار بالكامل
+                </button>
+            </div>
         `;
+    } else if (section === 'add-file') {
+        main.innerHTML = `
+            <h3>إضافة ملف أو مذكرة جديدة</h3>
+            <div class="admin-form-container">
+                <div class="form-group">
+                    <label>رابط الملف (Google Drive/Dropbox)</label>
+                    <input type="text" id="file-url" placeholder="https://drive.google.com/...">
+                </div>
+                <div class="form-group">
+                    <label>عنوان الملف</label>
+                    <input type="text" id="file-title" placeholder="أدخل اسم المذكرة">
+                </div>
+                <div class="form-group">
+                    <label>المرحلة</label>
+                    <select id="file-grade">
+                        <option value="3mid">الصف الثالث الإعدادي</option>
+                        <option value="1sec">الصف الأول الثانوي</option>
+                        <option value="2sec">الصف الثاني الثانوي</option>
+                        <option value="3sec">الصف الثالث الثانوي</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="saveNewFile()">
+                <i class="fas fa-save"></i> حفظ الملف
+            </button>
+        `;
+    } else if (section === 'manage-groups') {
+        main.innerHTML = `<h3>إدارة المجموعات</h3><p>يمكنك تعديل أسماء المجموعات من خلال مصفوفة appData في ملف app.js حالياً.</p>`;
+    } else if (section === 'settings') {
+        main.innerHTML = `<h3>الإعدادات</h3><p>الإعدادات العامة للمنصة ستتوفر قريباً.</p>`;
     }
 }
 
@@ -510,6 +570,33 @@ function sendWhatsAppMessage(event) {
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${text}`;
 
     window.open(whatsappUrl, '_blank');
+}
+
+async function saveNewFile() {
+    const url = document.getElementById('file-url').value;
+    const title = document.getElementById('file-title').value;
+    const grade = document.getElementById('file-grade').value;
+
+    if (!url || !title) return alert('برجاء ملء البيانات');
+
+    const newFile = {
+        url,
+        title,
+        grade,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        const docRef = await db.collection('files').add(newFile);
+        newFile.id = docRef.id;
+        appData.files.push(newFile);
+        alert('تم حفظ الملف بنجاح');
+        if (currentState.selectedGrade === grade) renderContent();
+        renderAdminSection('add-file');
+    } catch (error) {
+        console.error("Error saving file:", error);
+        alert('فشل الحفظ في قاعدة البيانات');
+    }
 }
 
 // Intro Video Logic

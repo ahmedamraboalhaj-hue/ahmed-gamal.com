@@ -20,22 +20,47 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="splash.css">
 </head>
 
 <body>
 
     <!-- Loading Screen -->
-    <div id="loader" class="loader-wrapper">
-        <div class="math-loader">
-            <i class="fas fa-plus"></i>
-            <i class="fas fa-minus"></i>
-            <i class="fas fa-times"></i>
-            <i class="fas fa-divide"></i>
+    <!-- AI Splash Screen -->
+    <div id="loader" class="splash-screen">
+        <div class="splash-particles"></div>
+        <div class="splash-content">
+            <div class="ai-visual-container">
+                <div class="orbital-ring ring-1"></div>
+                <div class="orbital-ring ring-2"></div>
+                <div class="orbital-ring ring-3"></div>
+                <div class="core-glow">
+                    <i class="fas fa-atom fa-spin-slow"></i>
+                </div>
+                <div class="scanner-line"></div>
+            </div>
+            <div class="text-content">
+                <h1 class="splash-title">
+                    <span class="prefix">منصة</span>
+                    <span class="name">أحمد جمال رضوان</span>
+                </h1>
+                <p class="splash-subtitle">عبقرية الرياضيات x قوة التكنولوجيا</p>
+            </div>
+            <div class="loading-container">
+                <div class="loading-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="loading-status">
+                    <span class="status-text">جاري تحميل البيانات...</span>
+                    <span class="percentage">0%</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Background Elements -->
     <div class="bg-glow"></div>
+    <div class="bg-glow" style="animation-delay: -7s; filter: hue-rotate(45deg); opacity: 0.1;"></div>
     <div class="bg-grid"></div>
 
     <!-- Navigation -->
@@ -62,16 +87,45 @@
         </div>
     </nav>
 
+    <!-- Student Login Modal -->
+    <div id="student-login-modal" class="modal" style="display: none; z-index: 5000;">
+        <div class="modal-content glass">
+            <h2>تسجيل الدخول للمنصة</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">برجاء إدخال بياناتك للمتابعة</p>
+            <form id="student-login-form" onsubmit="handleStudentLogin(event)">
+                <div class="form-group">
+                    <label>الاسم بالكامل</label>
+                    <input type="text" id="student-name" placeholder="أدخل اسمك الثلاثي" required>
+                </div>
+                <div class="form-group">
+                    <label>رقم الهاتف</label>
+                    <input type="tel" id="student-phone" placeholder="أدخل رقم هاتفك" required>
+                </div>
+                <div class="form-group">
+                    <label>السنة الدراسية</label>
+                    <select id="student-grade" required>
+                        <option value="" disabled selected>اختر سنتك الدراسية</option>
+                        <option value="3mid">الصف الثالث الإعدادي</option>
+                        <option value="1sec">الصف الأول الثانوي</option>
+                        <option value="2sec">الصف الثاني الثانوي</option>
+                        <option value="3sec">الصف الثالث الثانوي</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary w-100" style="margin-top: 20px;">دخول المنصة</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main>
         <!-- Hero Section -->
         <section id="home" class="hero">
             <div class="container">
-                <div class="hero-content">
+                <div class="hero-content reveal-left">
                     <div class="badge">نحو القمة في الرياضيات</div>
                     <h1><span class="gradient-text">الدحيح</span> في مادة الرياضيات</h1>
-                    <p>منصة الأستاذ أحمد جمال رضوان التعليمية - لتبسيط مفاهيم الرياضيات وكافة فروعها لطلاب الإعدادية
-                        والثانوية.</p>
+                    <p class="reveal"><span class="typing-container">منصة الأستاذ أحمد جمال رضوان التعليمية - لتبسيط
+                            مفاهيم الرياضيات</span></p>
                     <div class="hero-btns">
                         <button class="btn-primary btn-lg" onclick="scrollToGrades()">اختر مرحلتك التعليمية</button>
                         <button class="btn-outline btn-lg" onclick="openIntroVideo()"><i class="fas fa-play"></i> فيديو
@@ -79,10 +133,9 @@
                     </div>
                 </div>
                 <div class="hero-visual">
-                    <div class="math-card">
+                    <div class="math-card reveal">
                         <div class="card-glass">
-                            <i class="fas fa-square-root-variable"></i>
-                            <span>Math Expert</span>
+                            <img src="premium_math_logo_1770097196902.png" alt="Math Design" class="math-main-logo">
                         </div>
                     </div>
                     <div class="floating-icons">
@@ -96,7 +149,7 @@
         </section>
 
         <!-- About Section -->
-        <section id="about" class="section">
+        <section id="about" class="section reveal">
             <div class="container">
                 <div class="about-wrapper">
                     <div class="about-image">
@@ -150,8 +203,55 @@
             </div>
         </section>
 
+        <!-- Math Branches Section -->
+        <section id="branches" class="section reveal">
+            <div class="container">
+                <div class="section-header">
+                    <h2>فروع مادة <span class="gradient-text">الرياضيات</span> المسجلة</h2>
+                    <p>نقدم شرحاً وافياً وشاملاً لكافة فروع الرياضيات للمنهج المصري المطور</p>
+                </div>
+                <div class="branches-grid">
+                    <div class="branch-item">
+                        <div class="branch-icon-box">
+                            <i class="fas fa-square-root-alt"></i>
+                        </div>
+                        <h3>الجبر</h3>
+                        <p>بناء الأسس الرياضية</p>
+                    </div>
+                    <div class="branch-item">
+                        <div class="branch-icon-box">
+                            <i class="fas fa-draw-polygon"></i>
+                        </div>
+                        <h3>الهندسة</h3>
+                        <p>والهندسة الفراغية</p>
+                    </div>
+                    <div class="branch-item">
+                        <div class="branch-icon-box">
+                            <i class="fas fa-infinity"></i>
+                        </div>
+                        <h3>التفاضل والتكامل</h3>
+                        <p>أساسيات التغيير والحركة</p>
+                    </div>
+                    <div class="branch-item">
+                        <div class="branch-icon-box">
+                            <i class="fas fa-balance-scale"></i>
+                        </div>
+                        <h3>الاستاتيكا</h3>
+                        <p>علم الاتزان والقوى</p>
+                    </div>
+                    <div class="branch-item">
+                        <div class="branch-icon-box">
+                            <i class="fas fa-running"></i>
+                        </div>
+                        <h3>الديناميكا</h3>
+                        <p>قوانين الحركة والسرعة</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Grade Selection Section -->
-        <section id="grades" class="section">
+        <section id="grades" class="section reveal">
             <div class="container">
                 <div class="section-header">
                     <h2>اختر مرحلتك التعليمية</h2>
@@ -232,7 +332,7 @@
             </div>
         </section>
         <!-- Contact Section -->
-        <section id="contact" class="section">
+        <section id="contact" class="section reveal">
             <div class="container">
                 <div class="section-header">
                     <h2>تواصل معنا</h2>
@@ -323,25 +423,35 @@
 
     <!-- Admin Dashboard (Overlay) -->
     <div id="admin-dashboard" class="admin-overlay hidden">
+        <div class="admin-mobile-header">
+            <button class="admin-menu-toggle" onclick="hideAdminDashboard()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="admin-logo" style="margin-bottom: 0; font-size: 1.2rem;">لوحة التحكم</div>
+            <button class="admin-menu-toggle" onclick="toggleAdminSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
         <div class="admin-container">
-            <div class="admin-sidebar">
-                <div class="admin-logo">لوحة التحكم</div>
+            <div id="admin-sidebar" class="admin-sidebar">
+                <div class="admin-logo desktop-only">لوحة التحكم</div>
                 <ul class="admin-nav">
-                    <li class="active" data-section="dashboard">الإحصائيات العامة</li>
-                    <li data-section="add-lesson">إضافة درس فيديو</li>
-                    <li data-section="add-exam">إضافة اختبار</li>
-                    <li data-section="add-file">إضافة مذكرة/ملف</li>
-                    <li data-section="vouchers">أكواد التفعيل</li>
-                    <li data-section="manage-groups">إدارة المجموعات</li>
-                    <li data-section="settings">الإعدادات</li>
+                    <li class="active" data-section="dashboard"><i class="fas fa-chart-line"></i> الإحصائيات العامة</li>
+                    <li data-section="add-lesson"><i class="fas fa-video"></i> إضافة درس فيديو</li>
+                    <li data-section="add-exam"><i class="fas fa-file-alt"></i> إضافة اختبار</li>
+                    <li data-section="add-file"><i class="fas fa-file-pdf"></i> إضافة مذكرة/ملف</li>
+                    <li data-section="vouchers"><i class="fas fa-key"></i> أكواد التفعيل</li>
+                    <li data-section="students-list"><i class="fas fa-user-graduate"></i> قائمة الطلاب</li>
+                    <li data-section="visits-log"><i class="fas fa-history"></i> سجل الزيارات اليومية</li>
+                    <li data-section="manage-groups"><i class="fas fa-users-cog"></i> إدارة المجموعات</li>
+                    <li data-section="settings"><i class="fas fa-cog"></i> الإعدادات</li>
                 </ul>
-                <button class="btn-logout" onclick="logout()">خروج</button>
+                <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> خروج</button>
             </div>
             <div class="admin-main">
-                <div id="add-lesson" class="admin-section active">
-                    <!-- Add Lesson Form -->
+                <div id="admin-content-area">
+                    <!-- Standard Content -->
                 </div>
-                <!-- Other sections... -->
             </div>
         </div>
     </div>

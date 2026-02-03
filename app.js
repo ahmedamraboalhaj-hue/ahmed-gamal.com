@@ -25,7 +25,9 @@ let appData = {
     lessons: [],
     exams: [],
     files: [],
-    vouchers: []
+    vouchers: [],
+    students: [],
+    visits: []
 };
 
 // State
@@ -43,7 +45,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
     }, 1000);
     initEventListeners();
+    checkStudentSession();
+    initScrollReveal();
 });
+
+function initScrollReveal() {
+    const observerOptions = {
+        threshold: 0.15
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
+            }
+        });
+    }, observerOptions);
+
+    const revealElements = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
+    revealElements.forEach(el => observer.observe(el));
+}
+
+function checkStudentSession() {
+    const session = localStorage.getItem('studentSession');
+    if (!session && !currentState.isAdmin) {
+        document.getElementById('student-login-modal').style.display = 'flex';
+    } else if (session) {
+        const student = JSON.parse(session);
+        logVisit(student);
+    }
+}
 
 async function loadInitialData() {
     try {
@@ -58,6 +89,27 @@ async function loadInitialData() {
 
         const vouchersSnap = await db.collection('vouchers').get();
         appData.vouchers = vouchersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Real-time listeners for meaningful admin updates
+        db.collection('students').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Update dashboard if currently viewing statistics or students list
+                const activeSection = document.querySelector('.admin-nav li.active')?.dataset.section;
+                if (currentState.isAdmin && (activeSection === 'dashboard' || activeSection === 'students-list')) {
+                    renderAdminSection(activeSection);
+                }
+            });
+
+        db.collection('visits').orderBy('timestamp', 'desc')
+            .onSnapshot(snapshot => {
+                appData.visits = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const activeSection = document.querySelector('.admin-nav li.active')?.dataset.section;
+                if (currentState.isAdmin && (activeSection === 'dashboard' || activeSection === 'visits-log')) {
+                    renderAdminSection(activeSection);
+                }
+            });
+
     } catch (error) {
         console.error("Error loading data from Firebase:", error);
     }
@@ -68,7 +120,13 @@ function initEventListeners() {
     const modal = document.getElementById('admin-modal');
     const closeBtn = document.querySelector('.close-modal');
 
-    adminBtn.onclick = () => modal.style.display = 'flex';
+    adminBtn.onclick = () => {
+        if (currentState.isAdmin) {
+            showAdminDashboard();
+        } else {
+            modal.style.display = 'flex';
+        }
+    };
     closeBtn.onclick = () => modal.style.display = 'none';
     window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; };
 
@@ -319,17 +377,34 @@ function showAdminDashboard() {
             navItems.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
             renderAdminSection(item.dataset.section);
+
+            // Close sidebar on mobile after selection
+            if (window.innerWidth <= 968) {
+                toggleAdminSidebar();
+            }
         };
     });
     renderAdminSection('dashboard');
 }
 
+function toggleAdminSidebar() {
+    const sidebar = document.getElementById('admin-sidebar');
+    sidebar.classList.toggle('active');
+    const icon = document.querySelector('.admin-menu-toggle i');
+    if (sidebar.classList.contains('active')) {
+        icon.classList.replace('fa-bars', 'fa-times');
+    } else {
+        icon.classList.replace('fa-times', 'fa-bars');
+    }
+}
+
 function renderAdminSection(section) {
-    const main = document.querySelector('.admin-main');
+    const main = document.getElementById('admin-content-area');
     if (section === 'dashboard') {
         const usedVouchers = appData.vouchers.filter(v => v.isUsed);
-        const revenue = usedVouchers.length * 50; // Assume 50 EGP per voucher
-        const studentCount = usedVouchers.length;
+        const revenue = usedVouchers.length * 50;
+        const studentCount = appData.students.length;
+        const totalVisits = appData.visits.length;
 
         main.innerHTML = `
             <h3>لوحة التحكم والإحصائيات 📊</h3>
@@ -344,10 +419,17 @@ function renderAdminSection(section) {
                 </div>
                 <div class="stat-item glass">
                     <div class="stat-icon-wrapper" style="width: 50px; height: 50px; background: rgba(212, 175, 55, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-                        <i class="fas fa-users" style="color: var(--primary-light); font-size: 1.5rem;"></i>
+                        <i class="fas fa-user-graduate" style="color: var(--primary-light); font-size: 1.5rem;"></i>
                     </div>
                     <h4>${studentCount}</h4>
-                    <p>الطلاب النشطين</p>
+                    <p>الطلاب المسجلين</p>
+                </div>
+                <div class="stat-item glass">
+                    <div class="stat-icon-wrapper" style="width: 50px; height: 50px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                        <i class="fas fa-eye" style="color: #3b82f6; font-size: 1.5rem;"></i>
+                    </div>
+                    <h4>${totalVisits}</h4>
+                    <p>إجمالي الزيارات</p>
                 </div>
                 <div class="stat-item glass">
                     <div class="stat-icon-wrapper" style="width: 50px; height: 50px; background: rgba(99, 102, 241, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
@@ -356,12 +438,29 @@ function renderAdminSection(section) {
                     <h4>${appData.lessons.length}</h4>
                     <p>فيديو تعليمي</p>
                 </div>
-                <div class="stat-item glass">
-                    <div class="stat-icon-wrapper" style="width: 50px; height: 50px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-                        <i class="fas fa-ticket-alt" style="color: #f59e0b; font-size: 1.5rem;"></i>
-                    </div>
-                    <h4>${appData.vouchers.filter(v => !v.isUsed).length}</h4>
-                    <p>كود متاح</p>
+            </div>
+
+            <!-- Grade Breakdown -->
+            <div class="stats-grid" style="margin-top: 30px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                <div class="stat-item glass type-mini">
+                    <span style="font-size: 2rem; color: var(--primary-light);">3</span>
+                    <h4>${appData.students.filter(s => s.grade === '3mid').length} طالب</h4>
+                    <p>الشهادة الإعدادية</p>
+                </div>
+                <div class="stat-item glass type-mini">
+                    <span style="font-size: 2rem; color: #6366f1;">1</span>
+                    <h4>${appData.students.filter(s => s.grade === '1sec').length} طالب</h4>
+                    <p>أولى ثانوي</p>
+                </div>
+                <div class="stat-item glass type-mini">
+                    <span style="font-size: 2rem; color: #22c55e;">2</span>
+                    <h4>${appData.students.filter(s => s.grade === '2sec').length} طالب</h4>
+                    <p>تانية ثانوي</p>
+                </div>
+                <div class="stat-item glass type-mini">
+                    <span style="font-size: 2rem; color: #f59e0b;">3</span>
+                    <h4>${appData.students.filter(s => s.grade === '3sec').length} طالب</h4>
+                    <p>تالتة ثانوي</p>
                 </div>
             </div>
 
@@ -589,6 +688,64 @@ function renderAdminSection(section) {
                 </table>
             </div>
         `;
+    } else if (section === 'students-list') {
+        main.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>قائمة الطلاب المسجلين 🎓</h3>
+                <button class="btn-primary" onclick="printStudentsList()">
+                    <i class="fas fa-print"></i> طباعة القائمة
+                </button>
+            </div>
+            
+            <div class="vouchers-table-container">
+                <table id="printable-students-table">
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>رقم الهاتف</th>
+                            <th>المرحلة الدراسية</th>
+                            <th>تاريخ التسجيل</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.students.map(s => `
+                            <tr>
+                                <td>${s.name}</td>
+                                <td style="font-family: monospace;">${s.phone || 'N/A'}</td>
+                                <td>${appData.grades[s.grade]?.title || s.grade}</td>
+                                <td>${new Date(s.createdAt).toLocaleDateString('ar-EG')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else if (section === 'visits-log') {
+        main.innerHTML = `
+            <h3>سجل الزيارات اليومية 🕒</h3>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">متابعة لحظية لدخول الطلاب للمنصة</p>
+            
+            <div class="vouchers-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الطالب</th>
+                            <th>المرحلة</th>
+                            <th>وقت الزيارة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.visits.map(v => `
+                            <tr>
+                                <td>${v.studentName}</td>
+                                <td>${appData.grades[v.grade]?.title || v.grade}</td>
+                                <td style="direction: ltr; text-align: right;">${new Date(v.timestamp).toLocaleString('ar-EG')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
     } else if (section === 'manage-groups') {
         main.innerHTML = `<h3>إدارة المجموعات</h3><p>يمكنك تعديل أسماء المجموعات من خلال مصفوفة appData في ملف app.js حالياً.</p>`;
     } else if (section === 'settings') {
@@ -712,6 +869,10 @@ function logout() {
     document.getElementById('admin-dashboard').classList.add('hidden');
 }
 
+function hideAdminDashboard() {
+    document.getElementById('admin-dashboard').classList.add('hidden');
+}
+
 function sendWhatsAppMessage(event) {
     event.preventDefault();
     const name = document.getElementById('contact-name').value;
@@ -804,6 +965,80 @@ async function checkVoucher(btn) {
         }
     } else {
         alert('كود غير صحيح، أو تم استخدامه من قبل');
+    }
+}
+
+async function handleStudentLogin(event) {
+    event.preventDefault();
+    const name = document.getElementById('student-name').value;
+    const phone = document.getElementById('student-phone').value;
+    const grade = document.getElementById('student-grade').value;
+
+    // Check if student already exists in our local data
+    let student = appData.students.find(s => s.phone === phone);
+
+    if (!student) {
+        const studentData = {
+            name,
+            phone,
+            grade,
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            const docRef = await db.collection('students').add(studentData);
+            studentData.id = docRef.id;
+            appData.students.unshift(studentData);
+            student = studentData;
+        } catch (error) {
+            console.error("Error saving student:", error);
+            return alert('حدث خطأ أثناء تسجيل الدخول');
+        }
+    } else {
+        // If student exists but they changed their grade in the form, you might want to update it
+        // but for "uniqueness", we just take the existing record.
+    }
+
+    localStorage.setItem('studentSession', JSON.stringify(student));
+    logVisit(student);
+    document.getElementById('student-login-modal').style.display = 'none';
+    alert(`أهلاً بك يا ${student.name} في منصة الأستاذ أحمد جمال رضوان`);
+
+    // Auto select the student's grade
+    selectGrade(student.grade);
+}
+
+function printStudentsList() {
+    const table = document.getElementById('printable-students-table').outerHTML;
+    const win = window.open('', '', 'height=700,width=900');
+    win.document.write('<html><head><title>قائمة الطلاب</title>');
+    win.document.write('<style>body{direction:rtl; font-family: Tahoma; padding: 20px;} table{width:100%; border-collapse:collapse; margin-top:20px;} th,td{border:1px solid #ddd; padding:12px; text-align:right;} th{background:#f4f4f4;} h2{text-align:center;}</style>');
+    win.document.write('</head><body>');
+    win.document.write('<h2>قائمة الطلاب المسجلين - منصة الأستاذ أحمد جمال رضوان</h2>');
+    win.document.write(table);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.print();
+}
+
+async function logVisit(student) {
+    if (!student) return;
+
+    // Prevent multiple logs in the same session (tab open)
+    if (sessionStorage.getItem('visitLogged')) return;
+
+    const visitData = {
+        studentName: student.name,
+        phone: student.phone,
+        grade: student.grade,
+        timestamp: new Date().toISOString()
+    };
+    try {
+        await db.collection('visits').add(visitData);
+        appData.visits.unshift(visitData); // Local update
+        sessionStorage.setItem('visitLogged', 'true');
+    } catch (error) {
+        console.error("Error logging visit:", error);
     }
 }
 

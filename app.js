@@ -33,9 +33,11 @@ let appData = {
 // State
 let currentState = {
     selectedGrade: null,
-    selectedGroup: null,
+    selectedBranch: 'الكل',
     isAdmin: false
 };
+
+const MATH_BRANCHES = ['الكل', 'الجبر', 'الإحصاء', 'حساب المثلثات', 'الهندسة', 'التفاضل والتكامل', 'الاستاتيكا', 'الديناميكا', 'تأسيس'];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -166,32 +168,32 @@ function initEventListeners() {
 
 function selectGrade(gradeId) {
     currentState.selectedGrade = gradeId;
+    currentState.selectedBranch = 'الكل';
     document.getElementById('grades').classList.add('hidden');
     document.getElementById('content-display').classList.remove('hidden');
     document.getElementById('current-grade-title').textContent = appData.grades[gradeId].title;
-    showGroupSelection(gradeId);
+    renderBranchSelection();
+    renderContent();
     scrollToSection('content-display');
 }
 
-function showGroupSelection(gradeId) {
-    const overlay = document.getElementById('group-selection');
-    const list = document.getElementById('groups-list');
-    list.innerHTML = '';
-    appData.grades[gradeId].groups.forEach(group => {
-        const btn = document.createElement('div');
-        btn.className = 'group-card-mini';
-        btn.textContent = group;
-        btn.onclick = () => selectGroup(group);
-        list.appendChild(btn);
+function renderBranchSelection() {
+    const container = document.getElementById('branch-selection');
+    if (!container) return;
+    container.innerHTML = '';
+    MATH_BRANCHES.forEach(branch => {
+        const btn = document.createElement('button');
+        btn.className = `branch-tab-btn ${currentState.selectedBranch === branch ? 'active' : ''}`;
+        btn.textContent = branch;
+        btn.onclick = () => {
+            currentState.selectedBranch = branch;
+            renderBranchSelection();
+            renderContent();
+        };
+        container.appendChild(btn);
     });
-    overlay.classList.remove('hidden');
 }
 
-function selectGroup(groupName) {
-    currentState.selectedGroup = groupName;
-    document.getElementById('group-selection').classList.add('hidden');
-    renderContent();
-}
 
 function goBackToGrades() {
     document.getElementById('content-display').classList.add('hidden');
@@ -208,9 +210,16 @@ function renderContent() {
 
     const isSystemUnlocked = localStorage.getItem('isSystemUnlocked') === 'true';
 
+    // Helper for branch filtering
+    const branchFilter = (item) => {
+        const matchesGrade = item.grade === currentState.selectedGrade;
+        const matchesBranch = currentState.selectedBranch === 'الكل' || item.branch === currentState.selectedBranch;
+        return matchesGrade && matchesBranch;
+    };
+
     // Lessons
-    const filteredLessons = appData.lessons.filter(l => l.grade === currentState.selectedGrade);
-    lessonsList.innerHTML = filteredLessons.length ? '' : '<p class="empty-msg">لا يوجد دروس مضافة بعد</p>';
+    const filteredLessons = appData.lessons.filter(branchFilter);
+    lessonsList.innerHTML = filteredLessons.length ? '' : '<p class="empty-msg">لا يوجد دروس مضافة في هذا الفرع حالياً</p>';
     filteredLessons.forEach(lesson => {
         if (isSystemUnlocked) {
             lessonsList.innerHTML += `
@@ -249,8 +258,8 @@ function renderContent() {
     });
 
     // Exams
-    const filteredExams = appData.exams.filter(e => e.grade === currentState.selectedGrade);
-    examsList.innerHTML = filteredExams.length ? '' : '<p class="empty-msg">لا يوجد اختبارات متاحة حالياً</p>';
+    const filteredExams = appData.exams.filter(branchFilter);
+    examsList.innerHTML = filteredExams.length ? '' : '<p class="empty-msg">لا يوجد اختبارات مضافة في هذا الفرع حالياً</p>';
     filteredExams.forEach(exam => {
         examsList.innerHTML += `
             <div class="item-card exam-card">
@@ -265,8 +274,8 @@ function renderContent() {
     });
 
     // Files
-    const filteredFiles = appData.files.filter(f => f.grade === currentState.selectedGrade);
-    filesList.innerHTML = filteredFiles.length ? '' : '<p class="empty-msg">لا يوجد مذكرات مضافة حالياً</p>';
+    const filteredFiles = appData.files.filter(branchFilter);
+    filesList.innerHTML = filteredFiles.length ? '' : '<p class="empty-msg">لا يوجد مذكرات مضافة في هذا الفرع حالياً</p>';
     filteredFiles.forEach(file => {
         filesList.innerHTML += `
             <div class="item-card">
@@ -554,6 +563,12 @@ function renderAdminSection(section) {
                     <input type="text" id="lesson-desc" placeholder="مثلاً: شرح الوحدة الأولى">
                 </div>
                 <div class="form-group">
+                    <label>الفرع / المادة</label>
+                    <select id="lesson-branch">
+                        ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}">${b}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>المرحلة</label>
                     <select id="lesson-grade">
                         <option value="3mid">الصف الثالث الإعدادي</option>
@@ -574,6 +589,12 @@ function renderAdminSection(section) {
                 <div class="form-group">
                     <label>عنوان الاختبار</label>
                     <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل">
+                </div>
+                <div class="form-group">
+                    <label>الفرع / المادة</label>
+                    <select id="exam-branch">
+                        ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}">${b}</option>`).join('')}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>المرحلة</label>
@@ -629,6 +650,12 @@ function renderAdminSection(section) {
                 <div class="form-group">
                     <label>عنوان الملف</label>
                     <input type="text" id="file-title" placeholder="أدخل اسم المذكرة">
+                </div>
+                <div class="form-group">
+                    <label>الفرع / المادة</label>
+                    <select id="file-branch">
+                        ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}">${b}</option>`).join('')}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>المرحلة</label>
@@ -788,9 +815,10 @@ async function saveNewLesson() {
     const title = document.getElementById('lesson-title').value;
     const desc = document.getElementById('lesson-desc').value;
     const grade = document.getElementById('lesson-grade').value;
+    const branch = document.getElementById('lesson-branch').value;
     if (!url || !title) return alert('برجاء ملء البيانات');
     const newLesson = {
-        url, title, grade, desc: desc || 'درس فيديو توضيحي',
+        url, title, grade, branch, desc: desc || 'درس فيديو توضيحي',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     try {
@@ -809,6 +837,7 @@ async function saveNewLesson() {
 async function saveNewExam() {
     const title = document.getElementById('exam-title').value;
     const grade = document.getElementById('exam-grade').value;
+    const branch = document.getElementById('exam-branch').value;
     const blocks = document.querySelectorAll('.question-block');
     if (!title) return alert('برجاء إدخال عنوان الاختبار');
     let questions = [];
@@ -825,7 +854,7 @@ async function saveNewExam() {
     });
     if (questions.length === 0) return alert('برجاء إضافة سؤال واحد على الأقل مع كافة بياناته');
     const newExam = {
-        title, grade, questions,
+        title, grade, branch, questions,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     try {
@@ -846,9 +875,10 @@ async function saveNewFile() {
     const url = document.getElementById('file-url').value;
     const title = document.getElementById('file-title').value;
     const grade = document.getElementById('file-grade').value;
+    const branch = document.getElementById('file-branch').value;
     if (!url || !title) return alert('برجاء ملء البيانات');
     const newFile = {
-        url, title, grade,
+        url, title, grade, branch,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     try {

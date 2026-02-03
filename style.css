@@ -21,6 +21,7 @@
     font-family: 'Tajawal', 'Outfit', sans-serif;
 }
 
+html,
 body {
     background-color: var(--dark-bg);
     color: var(--text-primary);
@@ -28,6 +29,8 @@ body {
     overflow-x: hidden;
     scroll-behavior: smooth;
     text-align: right;
+    width: 100%;
+    position: relative;
 }
 
 /* Premium Scrollbar */
@@ -160,6 +163,16 @@ body {
     transform: translateX(0);
 }
 
+@media (max-width: 480px) {
+    .reveal-left {
+        transform: translateX(-20px);
+    }
+
+    .reveal-right {
+        transform: translateX(20px);
+    }
+}
+
 /* Typing Animation */
 .typing-container {
     display: inline-block;
@@ -231,7 +244,7 @@ body {
         display: none;
         position: absolute;
         top: 100%;
-        left: 0;
+        right: 0;
         width: 100%;
         background: rgba(5, 5, 5, 0.98);
         flex-direction: column;
@@ -239,6 +252,7 @@ body {
         gap: 15px;
         border-bottom: 1px solid var(--glass-border);
         text-align: center;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
     }
 
     .nav-links.active {
@@ -327,12 +341,21 @@ body {
     cursor: pointer;
 }
 
-/* Hero Section */
+#main-nav {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
 .hero {
-    padding: 100px 0;
+    padding: 80px 0;
     min-height: 80vh;
     display: flex;
     align-items: center;
+    overflow: hidden;
 }
 
 .hero .container {
@@ -362,8 +385,8 @@ body {
 
 .gradient-text {
     background: var(--gradient-2);
-    background-clip: text;
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -530,49 +553,6 @@ body {
     margin-inline: auto;
 }
 
-/* Group Selection Overlay */
-.group-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.95);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
-    border-radius: 20px;
-    backdrop-filter: blur(10px);
-}
-
-.overlay-content {
-    text-align: center;
-    width: 90%;
-}
-
-.groups-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-top: 30px;
-}
-
-.group-card-mini {
-    background: var(--card-bg);
-    border: 1px solid var(--glass-border);
-    padding: 25px;
-    border-radius: 15px;
-    cursor: pointer;
-    transition: 0.3s;
-    font-weight: 600;
-}
-
-.group-card-mini:hover {
-    background: var(--primary-color);
-    transform: scale(1.05);
-}
 
 /* Tabs */
 .content-tabs {
@@ -605,6 +585,54 @@ body {
 
 .tab-content.active {
     display: block;
+}
+
+/* Branch Selection Tabs */
+.branch-tabs-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    padding: 10px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+}
+
+.branch-tabs-container::-webkit-scrollbar {
+    display: none;
+}
+
+.branch-tab-btn {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.branch-tab-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    color: white;
+    border-color: rgba(212, 175, 55, 0.5);
+}
+
+.branch-tab-btn.active {
+    background: var(--gradient-1);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
 }
 
 /* Items Grid */
@@ -703,12 +731,13 @@ body {
 
 .admin-mobile-header {
     display: none;
-    padding: 15px 20px;
-    background: rgba(15, 23, 42, 0.95);
+    padding: 10px 15px;
+    background: #020204;
     border-bottom: 1px solid var(--glass-border);
     justify-content: space-between;
     align-items: center;
     z-index: 3002;
+    width: 100%;
 }
 
 .admin-menu-toggle {
@@ -1175,23 +1204,35 @@ footer {
     }
 
     .hero h1 {
-        font-size: 2.2rem;
+        font-size: 2rem;
         line-height: 1.3;
     }
 
     .hero p {
-        font-size: 1rem;
+        font-size: 0.95rem;
+        padding: 0 10px;
     }
 
     .hero-btns {
         flex-direction: column;
-        gap: 15px;
-        align-items: stretch;
+        gap: 12px;
+        align-items: center;
+        width: 100%;
+    }
+
+    .hero-btns .btn-primary,
+    .hero-btns .btn-outline {
+        width: 100%;
+        justify-content: center;
     }
 
     .grades-grid {
         grid-template-columns: 1fr;
-        gap: 20px;
+        gap: 15px;
+    }
+
+    .container {
+        padding: 0 15px;
     }
 
     .footer-grid {
@@ -1393,15 +1434,15 @@ select:focus {
         position: fixed;
         top: 0;
         right: -100%;
-        /* Hidden by default on mobile */
-        width: 80%;
+        width: 85%;
         max-width: 300px;
         height: 100vh;
-        z-index: 3100;
+        z-index: 4000;
         transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         border-right: none;
         border-left: 1px solid var(--glass-border);
         box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8);
+        background: #0a0a0c;
     }
 
     .admin-sidebar.active {
@@ -1412,10 +1453,11 @@ select:focus {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 15px 20px;
-        background: rgba(15, 23, 42, 0.98);
+        padding: 10px 15px;
+        background: #020204;
         border-bottom: 1px solid var(--glass-border);
         z-index: 3050;
+        width: 100%;
     }
 
     .admin-nav {
@@ -1685,12 +1727,13 @@ select:focus {
 }
 
 #student-login-modal .modal-content {
-    background: rgba(15, 23, 42, 0.7) !important;
+    background: #050505 !important;
     backdrop-filter: blur(25px) saturate(180%) !important;
     border: 1px solid rgba(212, 175, 55, 0.3) !important;
     box-shadow: 0 0 50px rgba(212, 175, 55, 0.1), inset 0 0 20px rgba(212, 175, 55, 0.05);
     animation: space-entrance 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
     max-width: 450px;
+    width: 90%;
     position: relative;
     overflow: hidden;
 }

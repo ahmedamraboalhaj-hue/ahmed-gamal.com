@@ -14,13 +14,36 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+const MATH_BRANCHES = ['الكل', 'الجبر', 'الإحصاء', 'حساب المثلثات', 'الهندسة', 'التفاضل والتكامل', 'الاستاتيكا', 'الديناميكا', 'تطبيقية', 'متجهات', 'جبر وإحتمالات', 'تأسيس'];
+
 // Initial Data Structure
 let appData = {
     grades: {
-        '3mid': { title: 'الصف الثالث الإعدادي', groups: ['مجموعة 1 (السبت)', 'مجموعة 2 (الثلاثاء)'] },
-        '1sec': { title: 'الصف الأول الثانوي', groups: ['مجموعة 1 (الأحد)', 'مجموعة 2 (الثلاثاء)'] },
-        '2sec': { title: 'الصف الثاني الثانوي', groups: ['مجموعة 1 (الاثنين)', 'مجموعة 2 (الأربعاء)'] },
-        '3sec': { title: 'الصف الثالث الثانوي', groups: ['مجموعة 1 (السبت)', 'مجموعة 2 (الخميس)'] }
+        '3mid': {
+            title: 'الصف الثالث الإعدادي',
+            groups: ['مجموعة 1', 'مجموعة 2'],
+            branches: ['الكل', 'جبر وإحتمالات', 'هندسة']
+        },
+        '1sec': {
+            title: 'الصف الأول الثانوي',
+            groups: ['مجموعة 1', 'مجموعة 2'],
+            branches: ['الكل', 'الجبر', 'الهندسة', 'حساب المثلثات', 'متجهات']
+        },
+        '2sec': {
+            title: 'الصف الثاني الثانوي',
+            groups: ['مجموعة 1', 'مجموعة 2'],
+            branches: ['الكل', 'الجبر', 'التفاضل والتكامل', 'حساب المثلثات', 'تطبيقية']
+        },
+        '3sec-sci': {
+            title: 'الصف الثالث الثانوي (علمي)',
+            groups: ['مجموعة 1', 'مجموعة 2'],
+            branches: ['الكل', 'تطبيقية', 'الجبر', 'التفاضل والتكامل', 'حساب المثلثات']
+        },
+        '3sec-lit': {
+            title: 'الصف الثالث الثانوي (أدبي)',
+            groups: ['مجموعة 1'],
+            branches: ['الكل', 'الجبر', 'التفاضل والتكامل']
+        }
     },
     lessons: [],
     exams: [],
@@ -30,14 +53,13 @@ let appData = {
     visits: []
 };
 
+
 // State
 let currentState = {
     selectedGrade: null,
     selectedBranch: 'الكل',
     isAdmin: false
 };
-
-const MATH_BRANCHES = ['الكل', 'الجبر', 'الإحصاء', 'حساب المثلثات', 'الهندسة', 'التفاضل والتكامل', 'الاستاتيكا', 'الديناميكا', 'تأسيس'];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -147,23 +169,29 @@ function initEventListeners() {
 
     const menuToggle = document.querySelector('.mobile-menu-toggle');
     const navLinks = document.querySelector('.nav-links');
-    if (menuToggle) {
+    if (menuToggle && navLinks) {
         menuToggle.onclick = () => {
-            navLinks.classList.toggle('active');
+            const isActive = navLinks.classList.toggle('active');
             const icon = menuToggle.querySelector('i');
-            icon.classList.toggle('fa-bars');
-            icon.classList.toggle('fa-times');
+            if (isActive) {
+                icon.classList.replace('fa-bars', 'fa-times');
+                document.body.style.overflow = 'hidden';
+            } else {
+                icon.classList.replace('fa-times', 'fa-bars');
+                document.body.style.overflow = '';
+            }
         };
-    }
 
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.onclick = () => {
-            navLinks.classList.remove('active');
-            const icon = menuToggle.querySelector('i');
-            icon.classList.add('fa-bars');
-            icon.classList.remove('fa-times');
-        };
-    });
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.onclick = () => {
+                navLinks.classList.remove('active');
+                const icon = menuToggle.querySelector('i');
+                icon.classList.add('fa-bars');
+                icon.classList.remove('fa-times');
+                document.body.style.overflow = '';
+            };
+        });
+    }
 }
 
 function selectGrade(gradeId) {
@@ -181,7 +209,11 @@ function renderBranchSelection() {
     const container = document.getElementById('branch-selection');
     if (!container) return;
     container.innerHTML = '';
-    MATH_BRANCHES.forEach(branch => {
+
+    // Get branches for the current grade
+    const branches = appData.grades[currentState.selectedGrade]?.branches || MATH_BRANCHES;
+
+    branches.forEach(branch => {
         const btn = document.createElement('button');
         btn.className = `branch-tab-btn ${currentState.selectedBranch === branch ? 'active' : ''}`;
         btn.textContent = branch;
@@ -570,17 +602,48 @@ function renderAdminSection(section) {
                 </div>
                 <div class="form-group">
                     <label>المرحلة</label>
-                    <select id="lesson-grade">
+                    <select id="lesson-grade" onchange="updateAdminBranches('lesson')">
                         <option value="3mid">الصف الثالث الإعدادي</option>
                         <option value="1sec">الصف الأول الثانوي</option>
                         <option value="2sec">الصف الثاني الثانوي</option>
-                        <option value="3sec">الصف الثالث الثانوي</option>
+                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
+                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
                     </select>
                 </div>
             </div>
             <button class="btn-primary" onclick="saveNewLesson()">
                 <i class="fas fa-save"></i> حفظ الدرس
             </button>
+
+            <hr style="margin: 40px 0; border: 1px solid var(--glass-border);">
+            
+            <h3>إدارة الدروس المضافة</h3>
+            <div class="vouchers-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>العنوان</th>
+                            <th>المرحلة</th>
+                            <th>الفرع</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.lessons.slice().reverse().map(l => `
+                            <tr>
+                                <td>${l.title}</td>
+                                <td>${appData.grades[l.grade]?.title || l.grade}</td>
+                                <td>${l.branch}</td>
+                                <td>
+                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px;" onclick="deleteItem('lessons', '${l.id}')">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     } else if (section === 'add-exam') {
         main.innerHTML = `
@@ -598,11 +661,12 @@ function renderAdminSection(section) {
                 </div>
                 <div class="form-group">
                     <label>المرحلة</label>
-                    <select id="exam-grade">
+                    <select id="exam-grade" onchange="updateAdminBranches('exam')">
                         <option value="3mid">الصف الثالث الإعدادي</option>
                         <option value="1sec">الصف الأول الثانوي</option>
                         <option value="2sec">الصف الثاني الثانوي</option>
-                        <option value="3sec">الصف الثالث الثانوي</option>
+                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
+                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
                     </select>
                 </div>
             </div>
@@ -638,6 +702,38 @@ function renderAdminSection(section) {
                     <i class="fas fa-save"></i> حفظ الاختبار بالكامل
                 </button>
             </div>
+
+            <hr style="margin: 40px 0; border: 1px solid var(--glass-border);">
+            
+            <h3>إدارة الاختبارات المضافة</h3>
+            <div class="vouchers-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>العنوان</th>
+                            <th>المرحلة</th>
+                            <th>الفرع</th>
+                            <th>الأسئلة</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.exams.slice().reverse().map(e => `
+                            <tr>
+                                <td>${e.title}</td>
+                                <td>${appData.grades[e.grade]?.title || e.grade}</td>
+                                <td>${e.branch}</td>
+                                <td>${e.questions?.length || 0} سؤال</td>
+                                <td>
+                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px;" onclick="deleteItem('exams', '${e.id}')">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     } else if (section === 'add-file') {
         main.innerHTML = `
@@ -659,17 +755,48 @@ function renderAdminSection(section) {
                 </div>
                 <div class="form-group">
                     <label>المرحلة</label>
-                    <select id="file-grade">
+                    <select id="file-grade" onchange="updateAdminBranches('file')">
                         <option value="3mid">الصف الثالث الإعدادي</option>
                         <option value="1sec">الصف الأول الثانوي</option>
                         <option value="2sec">الصف الثاني الثانوي</option>
-                        <option value="3sec">الصف الثالث الثانوي</option>
+                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
+                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
                     </select>
                 </div>
             </div>
             <button class="btn-primary" onclick="saveNewFile()">
                 <i class="fas fa-save"></i> حفظ الملف
             </button>
+
+            <hr style="margin: 40px 0; border: 1px solid var(--glass-border);">
+            
+            <h3>إدارة المذكرات المضافة</h3>
+            <div class="vouchers-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>العنوان</th>
+                            <th>المرحلة</th>
+                            <th>الفرع</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.files.slice().reverse().map(f => `
+                            <tr>
+                                <td>${f.title}</td>
+                                <td>${appData.grades[f.grade]?.title || f.grade}</td>
+                                <td>${f.branch}</td>
+                                <td>
+                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px;" onclick="deleteItem('files', '${f.id}')">
+                                        <i class="fas fa-trash"></i> حذف
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     } else if (section === 'vouchers') {
         const unusedCount = appData.vouchers.filter(v => !v.isUsed).length;
@@ -701,16 +828,27 @@ function renderAdminSection(section) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${appData.vouchers.slice().reverse().map(v => `
-                            <tr>
-                                <td style="font-family: monospace; font-size: 1.1rem; color: var(--primary-light);">${v.code}</td>
-                                <td>
-                                    <span class="status-badge ${v.isUsed ? 'status-present' : ''}" style="background: ${v.isUsed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${v.isUsed ? '#ef4444' : '#22c55e'};">
-                                        ${v.isUsed ? 'مُستخدم' : 'متاح'}
-                                    </span>
-                                </td>
-                            </tr>
-                        `).join('')}
+                        ${appData.vouchers.slice().reverse().map(v => {
+            const active = v.isActive !== false;
+            return `
+                                <tr>
+                                    <td style="font-family: monospace; font-size: 1.1rem; color: var(--primary-light);">${v.code}</td>
+                                    <td>
+                                        <span class="status-badge" style="background: ${v.isUsed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${v.isUsed ? '#ef4444' : '#22c55e'};">
+                                            ${v.isUsed ? 'مُستخدم' : 'متاح'}
+                                        </span>
+                                        <span class="status-badge" style="background: ${active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; color: ${active ? '#22c55e' : '#f59e0b'}; margin-right: 5px;">
+                                            ${active ? 'مفعل' : 'مغلق'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn-primary" style="background: ${active ? '#f59e0b' : '#22c55e'}; padding: 5px 10px;" onclick="toggleVoucherStatus('${v.id}', ${active})">
+                                            <i class="fas fa-${active ? 'pause' : 'play'}"></i> ${active ? 'إغلاق الكود' : 'تفعيل الكود'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -778,6 +916,10 @@ function renderAdminSection(section) {
     } else if (section === 'settings') {
         main.innerHTML = `<h3>الإعدادات</h3><p>الإعدادات العامة للمنصة ستتوفر قريباً.</p>`;
     }
+
+    if (section === 'add-lesson') updateAdminBranches('lesson');
+    if (section === 'add-exam') updateAdminBranches('exam');
+    if (section === 'add-file') updateAdminBranches('file');
 }
 
 let questionCount = 1;
@@ -942,6 +1084,7 @@ async function generateVouchers() {
         newVouchers.push({
             code: code,
             isUsed: false,
+            isActive: true,
             createdAt: new Date().toISOString() // Using ISO string instead of serverTimestamp for array sync
         });
     }
@@ -977,9 +1120,11 @@ async function checkVoucher(btn) {
     if (!code) return alert('برجاء إدخال الكود');
 
     // Find in appData first
-    const voucher = appData.vouchers.find(v => v.code === code && !v.isUsed);
+    const voucher = appData.vouchers.find(v => v.code === code);
 
     if (voucher) {
+        if (voucher.isUsed) return alert('هذا الكود تم استخدامه من قبل');
+        if (voucher.isActive === false) return alert('تم إغلاق هذا الكود من قبل الإدارة، برجاء التواصل مع الأستاذ');
         try {
             await db.collection('vouchers').doc(voucher.id).update({
                 isUsed: true,
@@ -1085,4 +1230,59 @@ function closeIntroVideo() {
     const iframe = document.getElementById('intro-video-iframe');
     iframe.src = '';
     modal.style.display = 'none';
+}
+
+function updateAdminBranches(type) {
+    const gradeSelect = document.getElementById(`${type}-grade`);
+    const branchSelect = document.getElementById(`${type}-branch`);
+    if (!gradeSelect || !branchSelect) return;
+    const selectedGrade = gradeSelect.value;
+
+    const branches = appData.grades[selectedGrade]?.branches || MATH_BRANCHES;
+
+    branchSelect.innerHTML = branches
+        .filter(b => b !== 'الكل')
+        .map(b => `<option value="${b}">${b}</option>`)
+        .join('');
+}
+async function deleteItem(collection, id) {
+    if (!confirm('هل أنت متأكد من حذف هذا العنصر؟')) return;
+    try {
+        await db.collection(collection).doc(id).delete();
+        // تحديث البيانات محلياً
+        appData[collection] = appData[collection].filter(item => item.id !== id);
+        alert('تم الحذف بنجاح');
+
+        // إعادة رندرة القسم المفتوح في لوحة التحكم
+        const sectionMap = {
+            'lessons': 'add-lesson',
+            'exams': 'add-exam',
+            'files': 'add-file'
+        };
+        renderAdminSection(sectionMap[collection]);
+
+        // تحديث الموقع الأساسي إذا كان المستخدم يشاهد قسماً معيناً
+        if (currentState.selectedGrade) renderContent();
+    } catch (error) {
+        console.error("Error deleting item:", error);
+        alert('حدث خطأ أثناء الحذف، يرجى المحاولة مرة أخرى');
+    }
+}
+async function toggleVoucherStatus(id, currentActive) {
+    try {
+        const newStatus = !currentActive;
+        await db.collection('vouchers').doc(id).update({
+            isActive: newStatus
+        });
+
+        // تحديث محلي
+        const voucher = appData.vouchers.find(v => v.id === id);
+        if (voucher) voucher.isActive = newStatus;
+
+        alert(newStatus ? 'تم تفعيل الكود بنجاح' : 'تم إغلاق الكود بنجاح');
+        renderAdminSection('vouchers');
+    } catch (error) {
+        console.error("Error toggling voucher status:", error);
+        alert('حدث خطأ أثناء تعديل حالة الكود');
+    }
 }

@@ -707,23 +707,56 @@ body {
     width: 100%;
     height: 100%;
     z-index: 2;
-    background: transparent;
-    cursor: default;
+    pointer-events: none;
 }
 
-/* Optional: allow interaction only with controls area if needed,
-   but for "don't let them enter youtube", we cover the whole thing.
-   Students can use spacebar or player controls if modestbranding is on,
-   but we block the top part severely. */
-.video-overlay-shield::after {
-    content: '';
+/* Block Top Title & Channel Info */
+.shield-top {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 60px;
-    /* Cover title bar */
-    background: rgba(0, 0, 0, 0.01);
+    pointer-events: auto;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), transparent);
+    cursor: default;
+}
+
+/* Block Bottom Right YouTube Logo & Redirects + Branded Watermark */
+.shield-bottom-right {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 140px;
+    height: 40px;
+    pointer-events: auto;
+    background: var(--dark-bg);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--glass-border);
+    cursor: default;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.shield-bottom-right::after {
+    content: 'أحمد جمال رضوان';
+    color: var(--primary-light);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* Protection for bottom left info area */
+.video-overlay-shield::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 120px;
+    height: 50px;
+    pointer-events: auto;
+    background: transparent;
 }
 
 .item-info {
@@ -1945,6 +1978,24 @@ select:focus {
     background: #1e293b;
     padding: 15px;
     z-index: 5;
+}
+
+.voucher-note-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 5px;
+    color: white;
+    padding: 5px 10px;
+    width: 100%;
+    min-width: 150px;
+    transition: 0.3s;
+    font-size: 0.9rem;
+}
+
+.voucher-note-input:focus {
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
 }
 
 .stat-item:hover {

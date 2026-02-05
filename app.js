@@ -257,11 +257,14 @@ function renderContent() {
             lessonsList.innerHTML += `
                 <div class="item-card">
                     <div class="video-preview-wrapper">
-                        <iframe src="https://www.youtube.com/embed/${getYouTubeId(lesson.url)}?modestbranding=1&rel=0&controls=1&showinfo=0&iv_load_policy=3" 
+                        <iframe src="https://www.youtube.com/embed/${getYouTubeId(lesson.url)}?modestbranding=1&rel=0&controls=1&showinfo=0&iv_load_policy=3&disablekb=1&enablejsapi=1&origin=${window.location.origin}" 
                             frameborder="0" 
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                             allowfullscreen></iframe>
-                        <div class="video-overlay-shield"></div>
+                        <div class="video-overlay-shield">
+                            <div class="shield-top"></div>
+                            <div class="shield-bottom-right"></div>
+                        </div>
                     </div>
                     <div class="item-info">
                         <h4>${lesson.title}</h4>
@@ -823,16 +826,30 @@ function renderAdminSection(section) {
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 50px;">م</th>
                             <th>الكود</th>
+                            <th>اسم الطالب/ملاحظة</th>
                             <th>الحالة</th>
+                            <th>إجراءات</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${appData.vouchers.slice().reverse().map(v => {
-            const active = v.isActive !== false;
-            return `
+                        ${appData.vouchers.slice()
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                .reverse()
+                .map((v, idx, arr) => {
+                    const active = v.isActive !== false;
+                    const serial = arr.length - idx;
+                    return `
                                 <tr>
+                                    <td><span style="color: var(--text-muted); font-size: 0.8rem;">#${serial}</span></td>
                                     <td style="font-family: monospace; font-size: 1.1rem; color: var(--primary-light);">${v.code}</td>
+                                    <td>
+                                        <input type="text" class="voucher-note-input" 
+                                               value="${v.note || ''}" 
+                                               placeholder="اكتب اسم الطالب هنا..." 
+                                               onblur="updateVoucherNote('${v.id}', this.value)">
+                                    </td>
                                     <td>
                                         <span class="status-badge" style="background: ${v.isUsed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${v.isUsed ? '#ef4444' : '#22c55e'};">
                                             ${v.isUsed ? 'مُستخدم' : 'متاح'}
@@ -843,12 +860,12 @@ function renderAdminSection(section) {
                                     </td>
                                     <td>
                                         <button class="btn-primary" style="background: ${active ? '#f59e0b' : '#22c55e'}; padding: 5px 10px;" onclick="toggleVoucherStatus('${v.id}', ${active})">
-                                            <i class="fas fa-${active ? 'pause' : 'play'}"></i> ${active ? 'إغلاق الكود' : 'تفعيل الكود'}
+                                            <i class="fas fa-${active ? 'pause' : 'play'}"></i> ${active ? 'إغلاق' : 'تفعيل'}
                                         </button>
                                     </td>
                                 </tr>
                             `;
-        }).join('')}
+                }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1085,6 +1102,7 @@ async function generateVouchers() {
             code: code,
             isUsed: false,
             isActive: true,
+            note: '',
             createdAt: new Date().toISOString() // Using ISO string instead of serverTimestamp for array sync
         });
     }
@@ -1221,7 +1239,7 @@ function openIntroVideo() {
     const modal = document.getElementById('intro-modal');
     const iframe = document.getElementById('intro-video-iframe');
     const videoId = 'c7EwMgecsVk';
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1&enablejsapi=1&origin=${window.location.origin}`;
     modal.style.display = 'flex';
 }
 
@@ -1284,5 +1302,19 @@ async function toggleVoucherStatus(id, currentActive) {
     } catch (error) {
         console.error("Error toggling voucher status:", error);
         alert('حدث خطأ أثناء تعديل حالة الكود');
+    }
+}
+
+async function updateVoucherNote(id, note) {
+    try {
+        await db.collection('vouchers').doc(id).update({
+            note: note
+        });
+
+        // تحديث محلي
+        const voucher = appData.vouchers.find(v => v.id === id);
+        if (voucher) voucher.note = note;
+    } catch (error) {
+        console.error("Error updating voucher note:", error);
     }
 }

@@ -430,14 +430,18 @@
     <div id="intro-modal" class="modal">
         <div class="modal-content video-modal-content glass">
             <span class="close-modal" onclick="closeIntroVideo()">&times;</span>
-            <div class="video-container-wrapper">
+            <div class="video-container-wrapper" id="intro-video-wrapper">
                 <iframe id="intro-video-iframe" src="" frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen></iframe>
+                    ></iframe>
                 <div class="video-overlay-shield">
                     <div class="shield-top"></div>
+                    <div class="shield-center-top"></div>
                     <div class="shield-bottom-right"></div>
                     <div class="shield-bottom-left"></div>
+                    <button class="custom-fs-btn" title="تكبير الشاشة" onclick="toggleFullscreen('intro-video-wrapper')">
+                        <i class="fas fa-expand"></i>
+                    </button>
                 </div>
             </div>
         </div>

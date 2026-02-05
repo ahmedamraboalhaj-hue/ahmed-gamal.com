@@ -253,18 +253,23 @@ function renderContent() {
     const filteredLessons = appData.lessons.filter(branchFilter);
     lessonsList.innerHTML = filteredLessons.length ? '' : '<p class="empty-msg">لا يوجد دروس مضافة في هذا الفرع حالياً</p>';
     filteredLessons.forEach(lesson => {
+        const wrapperId = `vid-wrapper-${lesson.id}`;
         if (isSystemUnlocked) {
             lessonsList.innerHTML += `
                 <div class="item-card">
-                    <div class="video-preview-wrapper">
-                        <iframe src="https://www.youtube.com/embed/${getYouTubeId(lesson.url)}?modestbranding=1&rel=0&controls=1&showinfo=0&iv_load_policy=3&disablekb=1&enablejsapi=1&origin=${window.location.origin}" 
+                    <div class="video-preview-wrapper" id="${wrapperId}">
+                        <iframe src="https://www.youtube.com/embed/${getYouTubeId(lesson.url)}?modestbranding=1&rel=0&controls=1&showinfo=0&iv_load_policy=3&disablekb=1&enablejsapi=1&fs=0&origin=${window.location.origin}" 
                             frameborder="0" 
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen></iframe>
+                            ></iframe>
                         <div class="video-overlay-shield">
                             <div class="shield-top"></div>
+                            <div class="shield-center-top"></div>
                             <div class="shield-bottom-right"></div>
                             <div class="shield-bottom-left"></div>
+                            <button class="custom-fs-btn" title="تكبير الشاشة" onclick="toggleFullscreen('${wrapperId}')">
+                                <i class="fas fa-expand"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="item-info">
@@ -1240,9 +1245,35 @@ function openIntroVideo() {
     const modal = document.getElementById('intro-modal');
     const iframe = document.getElementById('intro-video-iframe');
     const videoId = 'c7EwMgecsVk';
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1&enablejsapi=1&origin=${window.location.origin}`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1&enablejsapi=1&fs=0&origin=${window.location.origin}`;
     modal.style.display = 'flex';
 }
+
+// Custom Fullscreen Handler
+function toggleFullscreen(wrapperId) {
+    const elem = document.getElementById(wrapperId);
+    if (!document.fullscreenElement) {
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) { /* Safari */
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) { /* IE11 */
+            elem.msRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+// Disable right-click on video wrappers to prevent context menu redirects
+document.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('.video-preview-wrapper, .video-container-wrapper')) {
+        e.preventDefault();
+        return false;
+    }
+});
 
 function closeIntroVideo() {
     const modal = document.getElementById('intro-modal');

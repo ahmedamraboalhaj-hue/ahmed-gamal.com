@@ -699,52 +699,56 @@ body {
     z-index: 1;
 }
 
-/* Shield to prevent clicking YouTube logo/links */
+/* Improved Shield to prevent clicking YouTube logo/links */
 .video-overlay-shield {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 2;
+    z-index: 10;
     pointer-events: none;
+    transition: 0.3s;
 }
 
-/* Block Top Title & Channel Info */
+/* Block Top Title, Channel Info, and Share button */
 .shield-top {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 60px;
+    height: 70px;
     pointer-events: auto;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), transparent);
+    background: transparent;
     cursor: default;
 }
 
-/* Block Bottom Right YouTube Logo & Redirects + Branded Watermark */
+/* Watermark/Logo Cover - Bottom Right */
 .shield-bottom-right {
     position: absolute;
-    bottom: 8px;
-    right: 8px;
-    width: 140px;
-    height: 40px;
+    bottom: 40px;
+    /* Above the progress bar */
+    right: 0;
+    width: 160px;
+    height: 60px;
     pointer-events: auto;
-    background: var(--dark-bg);
-    border-radius: 6px;
+    background: rgba(5, 5, 5, 0.8);
+    backdrop-filter: blur(5px);
+    border-radius: 12px 0 0 0;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid var(--glass-border);
     cursor: default;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.8);
 }
 
 .shield-bottom-right::after {
     content: 'أحمد جمال رضوان';
     color: var(--primary-light);
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 1px;
 }
 
 /* Block Bottom Left 'Watch on YouTube' button */
@@ -752,12 +756,70 @@ body {
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 200px;
-    /* Widened to cover "المشاهدة على يوتيوب" */
-    height: 60px;
+    width: 250px;
+    height: 80px;
     pointer-events: auto;
     background: transparent;
     cursor: default;
+}
+
+/* Custom Fullscreen Button Styling */
+.custom-fs-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 170px;
+    /* Next to the watermark */
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 20;
+    pointer-events: auto;
+    transition: 0.3s;
+}
+
+.custom-fs-btn:hover {
+    background: var(--primary-color);
+    transform: scale(1.1);
+}
+
+/* Fullscreen handling */
+.video-preview-wrapper:fullscreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+.video-preview-wrapper:fullscreen iframe {
+    width: 100vw !important;
+    height: 56.25vw !important;
+    /* Keep 16:9 */
+    max-height: 100vh;
+    max-width: 177.78vh;
+}
+
+.video-preview-wrapper:fullscreen .video-overlay-shield {
+    z-index: 99999;
+}
+
+.video-preview-wrapper:fullscreen .shield-bottom-right {
+    bottom: 60px;
+    right: 20px;
+    width: 200px;
+    height: 80px;
+}
+
+.video-preview-wrapper:fullscreen .custom-fs-btn {
+    bottom: 20px;
+    right: 240px;
 }
 
 .item-info {
@@ -1764,8 +1826,7 @@ select:focus {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    /* Let clicks pass through by default */
-    z-index: 10;
+    z-index: 50;
 }
 
 /* Table Enhancements */
@@ -1901,23 +1962,23 @@ select:focus {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    width: 100%;
-    height: 50px;
-    background: rgba(0, 0, 0, 0.01);
-    /* Invisible but blocks interaction */
+    right: 0;
+    width: 120px;
+    height: 80px;
+    background: transparent;
     pointer-events: auto;
+    z-index: 15;
 }
 
-/* Cover bottom-right YouTube logo */
-.video-overlay-shield::after {
-    content: '';
+/* Additional invisibility shields to cover random logo appearances */
+.video-overlay-shield .shield-center-top {
     position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 100px;
-    height: 40px;
-    background: rgba(0, 0, 0, 0.01);
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 60px;
+    background: transparent;
     pointer-events: auto;
 }
 

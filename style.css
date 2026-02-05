@@ -182,6 +182,15 @@ body {
     animation: typing 3s steps(30) infinite, blink 0.5s step-end infinite alternate;
 }
 
+@media (max-width: 768px) {
+    .typing-container {
+        white-space: normal;
+        border-right: none;
+        overflow: visible;
+        animation: none;
+    }
+}
+
 @keyframes typing {
     0% {
         width: 0;
@@ -404,7 +413,7 @@ body {
 }
 
 .hero h1 {
-    font-size: 4rem;
+    font-size: clamp(2rem, 8vw, 4rem);
     line-height: 1.2;
     margin-bottom: 20px;
     font-weight: 900;
@@ -1360,12 +1369,15 @@ footer {
     }
 
     .hero {
-        padding-top: 120px;
+        padding-top: 100px;
+        padding-bottom: 30px;
     }
 
     .hero .container {
         grid-template-columns: 1fr;
         text-align: center;
+        width: 100%;
+        padding: 0 15px;
     }
 
     .hero-visual {
@@ -1373,18 +1385,25 @@ footer {
     }
 
     .hero h1 {
-        font-size: 2rem;
-        line-height: 1.3;
+        font-size: clamp(1.5rem, 8.5vw, 2.2rem);
+        line-height: 1.25;
+        margin-bottom: 15px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        padding: 0;
     }
 
     .hero p {
         font-size: 0.95rem;
-        padding: 0 10px;
+        padding: 0 5px;
+        margin-bottom: 30px;
+        max-width: 100%;
+        line-height: 1.5;
     }
 
     .hero-btns {
         flex-direction: column;
-        gap: 12px;
+        gap: 15px;
         align-items: center;
         width: 100%;
     }
@@ -1392,7 +1411,10 @@ footer {
     .hero-btns .btn-primary,
     .hero-btns .btn-outline {
         width: 100%;
+        max-width: 290px;
         justify-content: center;
+        padding: 12px 15px;
+        font-size: 0.95rem;
     }
 
     .grades-grid {

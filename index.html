@@ -432,16 +432,25 @@
             <span class="close-modal" onclick="closeIntroVideo()">&times;</span>
             <div class="video-container-wrapper" id="intro-video-wrapper">
                 <iframe id="intro-video-iframe" src="" frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    ></iframe>
-                <div class="video-overlay-shield">
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                <div class="video-overlay-shield total-shield" onclick="togglePlayPause('intro')"
+                    ondblclick="toggleFullscreen('intro-video-wrapper')">
+                    <div class="play-overlay">
+                        <i class="fas fa-play"></i>
+                    </div>
                     <div class="shield-top"></div>
                     <div class="shield-center-top"></div>
                     <div class="shield-bottom-right"></div>
                     <div class="shield-bottom-left"></div>
-                    <button class="custom-fs-btn" title="تكبير الشاشة" onclick="toggleFullscreen('intro-video-wrapper')">
-                        <i class="fas fa-expand"></i>
-                    </button>
+                    <div class="custom-controls">
+                        <div class="progress-container" onclick="event.stopPropagation(); handleSeek(event, 'intro')">
+                            <div class="progress-bar" id="progress-intro"></div>
+                        </div>
+                        <button class="custom-fs-btn" title="تكبير الشاشة"
+                            onclick="event.stopPropagation(); toggleFullscreen('intro-video-wrapper')">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -528,6 +537,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+    <!-- YouTube API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="app.js"></script>
 </body>
 

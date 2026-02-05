@@ -61,6 +61,14 @@ let currentState = {
     isAdmin: false
 };
 
+// YouTube Players Management
+let ytPlayers = {};
+let isYouTubeAPIReady = false;
+
+function onYouTubeIframeAPIReady() {
+    isYouTubeAPIReady = true;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     await loadInitialData();
@@ -254,22 +262,28 @@ function renderContent() {
     lessonsList.innerHTML = filteredLessons.length ? '' : '<p class="empty-msg">لا يوجد دروس مضافة في هذا الفرع حالياً</p>';
     filteredLessons.forEach(lesson => {
         const wrapperId = `vid-wrapper-${lesson.id}`;
+        const playerId = `player-${lesson.id}`;
         if (isSystemUnlocked) {
             lessonsList.innerHTML += `
                 <div class="item-card">
                     <div class="video-preview-wrapper" id="${wrapperId}">
-                        <iframe src="https://www.youtube.com/embed/${getYouTubeId(lesson.url)}?modestbranding=1&rel=0&controls=1&showinfo=0&iv_load_policy=3&disablekb=1&enablejsapi=1&fs=0&origin=${window.location.origin}" 
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            ></iframe>
-                        <div class="video-overlay-shield">
+                        <div id="${playerId}"></div>
+                        <div class="video-overlay-shield total-shield" onclick="togglePlayPause('${lesson.id}')" ondblclick="toggleFullscreen('${wrapperId}')">
+                            <div class="play-overlay">
+                                <i class="fas fa-play"></i>
+                            </div>
                             <div class="shield-top"></div>
                             <div class="shield-center-top"></div>
                             <div class="shield-bottom-right"></div>
                             <div class="shield-bottom-left"></div>
-                            <button class="custom-fs-btn" title="تكبير الشاشة" onclick="toggleFullscreen('${wrapperId}')">
-                                <i class="fas fa-expand"></i>
-                            </button>
+                            <div class="custom-controls">
+                                <div class="progress-container" onclick="event.stopPropagation(); handleSeek(event, '${lesson.id}')">
+                                    <div class="progress-bar" id="progress-${lesson.id}"></div>
+                                </div>
+                                <button class="custom-fs-btn" title="تكبير الشاشة" onclick="event.stopPropagation(); toggleFullscreen('${wrapperId}')">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="item-info">
@@ -278,6 +292,8 @@ function renderContent() {
                     </div>
                 </div>
             `;
+            // Initialize player after element is in DOM
+            setTimeout(() => initYTPlayer(lesson.id, getYouTubeId(lesson.url)), 100);
         } else {
             lessonsList.innerHTML += `
                 <div class="item-card locked-card" style="position: relative;">
@@ -1243,10 +1259,115 @@ async function logVisit(student) {
 
 function openIntroVideo() {
     const modal = document.getElementById('intro-modal');
-    const iframe = document.getElementById('intro-video-iframe');
     const videoId = 'c7EwMgecsVk';
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1&enablejsapi=1&fs=0&origin=${window.location.origin}`;
     modal.style.display = 'flex';
+
+    if (ytPlayers['intro']) {
+        ytPlayers['intro'].loadVideoById(videoId);
+    } else {
+        initYTPlayer('intro', videoId, 'intro-video-iframe');
+    }
+}
+
+function initYTPlayer(id, videoId, elementId = null) {
+    if (!isYouTubeAPIReady) {
+        setTimeout(() => initYTPlayer(id, videoId, elementId), 500);
+        return;
+    }
+
+    const targetId = elementId || `player-${id}`;
+
+    // Clean up old player if exists
+    if (ytPlayers[id]) {
+        try { ytPlayers[id].destroy(); } catch (e) { }
+    }
+
+    ytPlayers[id] = new YT.Player(targetId, {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+            'autoplay': 0,
+            'controls': 1,
+            'modestbranding': 1,
+            'rel': 0,
+            'showinfo': 0,
+            'iv_load_policy': 3,
+            'disablekb': 1,
+            'fs': 0,
+            'enablejsapi': 1,
+            'origin': window.location.origin
+        },
+        events: {
+            'onStateChange': (event) => onPlayerStateChange(event, id)
+        }
+    });
+}
+
+function onPlayerStateChange(event, id) {
+    const wrapper = id === 'intro' ? document.getElementById('intro-video-wrapper') : document.getElementById(`vid-wrapper-${id}`);
+    if (!wrapper) return;
+    const playIcon = wrapper.querySelector('.play-overlay i');
+    const playOverlay = wrapper.querySelector('.play-overlay');
+
+    if (event.data == YT.PlayerState.PLAYING) {
+        if (playOverlay) playOverlay.style.opacity = '0';
+        if (playIcon) playIcon.className = 'fas fa-pause';
+        startProgressLoop(id);
+    } else {
+        if (playOverlay) playOverlay.style.opacity = '1';
+        if (playIcon) playIcon.className = 'fas fa-play';
+        stopProgressLoop(id);
+    }
+}
+
+let progressIntervals = {};
+
+function startProgressLoop(id) {
+    stopProgressLoop(id);
+    progressIntervals[id] = setInterval(() => {
+        const player = ytPlayers[id];
+        const progressBar = document.getElementById(`progress-${id}`);
+        if (player && progressBar && player.getCurrentTime) {
+            const currentTime = player.getCurrentTime();
+            const duration = player.getDuration();
+            const percent = (currentTime / duration) * 100;
+            progressBar.style.width = `${percent}%`;
+        }
+    }, 1000);
+}
+
+function stopProgressLoop(id) {
+    if (progressIntervals[id]) {
+        clearInterval(progressIntervals[id]);
+        delete progressIntervals[id];
+    }
+}
+
+function handleSeek(event, id) {
+    const player = ytPlayers[id];
+    if (!player) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const width = rect.width;
+    const percent = x / width;
+    const duration = player.getDuration();
+    if (duration > 0) {
+        player.seekTo(duration * percent, true);
+    }
+}
+
+function togglePlayPause(id) {
+    const player = ytPlayers[id];
+    if (!player) return;
+
+    const state = player.getPlayerState();
+    if (state == YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+    } else {
+        player.playVideo();
+    }
 }
 
 // Custom Fullscreen Handler
@@ -1255,9 +1376,9 @@ function toggleFullscreen(wrapperId) {
     if (!document.fullscreenElement) {
         if (elem.requestFullscreen) {
             elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) { /* Safari */
+        } else if (elem.webkitRequestFullscreen) {
             elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) { /* IE11 */
+        } else if (elem.msRequestFullscreen) {
             elem.msRequestFullscreen();
         }
     } else {
@@ -1277,8 +1398,9 @@ document.addEventListener('contextmenu', (e) => {
 
 function closeIntroVideo() {
     const modal = document.getElementById('intro-modal');
-    const iframe = document.getElementById('intro-video-iframe');
-    iframe.src = '';
+    if (ytPlayers['intro']) {
+        ytPlayers['intro'].stopVideo();
+    }
     modal.style.display = 'none';
 }
 

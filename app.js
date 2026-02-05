@@ -264,6 +264,7 @@ function renderContent() {
                         <div class="video-overlay-shield">
                             <div class="shield-top"></div>
                             <div class="shield-bottom-right"></div>
+                            <div class="shield-bottom-left"></div>
                         </div>
                     </div>
                     <div class="item-info">

@@ -747,16 +747,17 @@ body {
     font-weight: 700;
 }
 
-/* Protection for bottom left info area */
-.video-overlay-shield::before {
-    content: '';
+/* Block Bottom Left 'Watch on YouTube' button */
+.shield-bottom-left {
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 120px;
-    height: 50px;
+    width: 200px;
+    /* Widened to cover "المشاهدة على يوتيوب" */
+    height: 60px;
     pointer-events: auto;
     background: transparent;
+    cursor: default;
 }
 
 .item-info {

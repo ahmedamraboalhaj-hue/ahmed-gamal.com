@@ -2267,9 +2267,10 @@ select:focus {
     opacity: 1;
 }
 
-.custom-fs-btn {
+.custom-fs-btn,
+.custom-seek-btn {
     pointer-events: auto;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.1);
     border: 1px solid var(--glass-border);
     color: white;
     width: 40px;
@@ -2279,6 +2280,18 @@ select:focus {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: 0.3s;
+    margin: 0 5px;
+}
+
+.custom-seek-btn:hover {
+    background: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.custom-fs-btn:hover {
+    background: var(--primary-color);
+    transform: scale(1.1);
 }
 
 .stat-item:hover {

@@ -260,10 +260,14 @@ function renderContent() {
     // Lessons
     const filteredLessons = appData.lessons.filter(branchFilter);
     lessonsList.innerHTML = filteredLessons.length ? '' : '<p class="empty-msg">لا يوجد دروس مضافة في هذا الفرع حالياً</p>';
+
+    // Check if THIS SPECIFIC GRADE is unlocked
+    const isGradeUnlocked = localStorage.getItem(`unlocked_${currentState.selectedGrade}`) === 'true';
+
     filteredLessons.forEach(lesson => {
         const wrapperId = `vid-wrapper-${lesson.id}`;
         const playerId = `player-${lesson.id}`;
-        if (isSystemUnlocked) {
+        if (isGradeUnlocked) {
             lessonsList.innerHTML += `
                 <div class="item-card">
                     <div class="video-preview-wrapper" id="${wrapperId}">
@@ -277,9 +281,15 @@ function renderContent() {
                             <div class="shield-bottom-right"></div>
                             <div class="shield-bottom-left"></div>
                             <div class="custom-controls">
+                                <button class="custom-seek-btn" onclick="event.stopPropagation(); seek('${lesson.id}', -10)" title="تراجع 10 ثواني">
+                                    <i class="fas fa-undo"></i>
+                                </button>
                                 <div class="progress-container" onclick="event.stopPropagation(); handleSeek(event, '${lesson.id}')">
                                     <div class="progress-bar" id="progress-${lesson.id}"></div>
                                 </div>
+                                <button class="custom-seek-btn" onclick="event.stopPropagation(); seek('${lesson.id}', 10)" title="تقدم 10 ثواني">
+                                    <i class="fas fa-redo"></i>
+                                </button>
                                 <button class="custom-fs-btn" title="تكبير الشاشة" onclick="event.stopPropagation(); toggleFullscreen('${wrapperId}')">
                                     <i class="fas fa-expand"></i>
                                 </button>
@@ -825,16 +835,53 @@ function renderAdminSection(section) {
         `;
     } else if (section === 'vouchers') {
         const unusedCount = appData.vouchers.filter(v => !v.isUsed).length;
+
+        // Detailed breakdown
+        const stats = {
+            '3mid': appData.vouchers.filter(v => v.grade === '3mid').length,
+            '1sec': appData.vouchers.filter(v => v.grade === '1sec').length,
+            '2sec': appData.vouchers.filter(v => v.grade === '2sec').length,
+            '3sec': appData.vouchers.filter(v => v.grade === '3sec').length,
+        };
+
         main.innerHTML = `
-            <h3>نظام أكواد التفعيل</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <h4>${appData.vouchers.length}</h4>
-                    <p>إجمالي الأكواد</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>نظام أكواد التفعيل المتخصصة 🔑</h3>
+                <div style="display: flex; gap: 10px;">
+                    <select id="voucher-grade-filter" style="width: auto; margin-top: 0; padding: 5px 15px;" onchange="filterVouchersByGrade(this.value)">
+                        <option value="all">كل المراحل</option>
+                        <option value="3mid">3 إعدادي (${stats['3mid']})</option>
+                        <option value="1sec">1 ثانوي (${stats['1sec']})</option>
+                        <option value="2sec">2 ثانوي (${stats['2sec']})</option>
+                        <option value="3sec">3 ثانوي (${stats['3sec']})</option>
+                    </select>
                 </div>
-                <div class="stat-item">
-                    <h4>${unusedCount}</h4>
-                    <p>أكواد لم تُستخدم</p>
+            </div>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 30px;">
+                <div class="stat-item glass">
+                    <h4 style="color: var(--primary-light);">${appData.vouchers.length}</h4>
+                    <p>الإجمالي</p>
+                </div>
+                <div class="stat-item glass">
+                    <h4 style="color: #22c55e;">${unusedCount}</h4>
+                    <p>أكواد متاحة</p>
+                </div>
+                  <div class="stat-item glass">
+                    <h4 style="color: #6366f1;">${stats['3mid']}</h4>
+                    <p>3 إعدادي</p>
+                </div>
+                <div class="stat-item glass">
+                    <h4 style="color: #f59e0b;">${stats['1sec']}</h4>
+                    <p>1 ثانوي</p>
+                </div>
+                <div class="stat-item glass">
+                    <h4 style="color: #ef4444;">${stats['2sec']}</h4>
+                    <p>2 ثانوي</p>
+                </div>
+                <div class="stat-item glass">
+                    <h4 style="color: #a855f7;">${stats['3sec']}</h4>
+                    <p>3 ثانوي</p>
                 </div>
             </div>
             
@@ -845,49 +892,19 @@ function renderAdminSection(section) {
             </div>
 
             <div class="vouchers-table-container">
-                <table>
+                <table id="vouchers-main-table">
                     <thead>
                         <tr>
                             <th style="width: 50px;">م</th>
                             <th>الكود</th>
+                            <th>المرحلة</th>
                             <th>اسم الطالب/ملاحظة</th>
                             <th>الحالة</th>
                             <th>إجراءات</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${appData.vouchers.slice()
-                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-                .reverse()
-                .map((v, idx, arr) => {
-                    const active = v.isActive !== false;
-                    const serial = arr.length - idx;
-                    return `
-                                <tr>
-                                    <td><span style="color: var(--text-muted); font-size: 0.8rem;">#${serial}</span></td>
-                                    <td style="font-family: monospace; font-size: 1.1rem; color: var(--primary-light);">${v.code}</td>
-                                    <td>
-                                        <input type="text" class="voucher-note-input" 
-                                               value="${v.note || ''}" 
-                                               placeholder="اكتب اسم الطالب هنا..." 
-                                               onblur="updateVoucherNote('${v.id}', this.value)">
-                                    </td>
-                                    <td>
-                                        <span class="status-badge" style="background: ${v.isUsed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${v.isUsed ? '#ef4444' : '#22c55e'};">
-                                            ${v.isUsed ? 'مُستخدم' : 'متاح'}
-                                        </span>
-                                        <span class="status-badge" style="background: ${active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; color: ${active ? '#22c55e' : '#f59e0b'}; margin-right: 5px;">
-                                            ${active ? 'مفعل' : 'مغلق'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn-primary" style="background: ${active ? '#f59e0b' : '#22c55e'}; padding: 5px 10px;" onclick="toggleVoucherStatus('${v.id}', ${active})">
-                                            <i class="fas fa-${active ? 'pause' : 'play'}"></i> ${active ? 'إغلاق' : 'تفعيل'}
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
-                }).join('')}
+                    <tbody id="vouchers-table-body">
+                        ${renderVoucherRows(appData.vouchers)}
                     </tbody>
                 </table>
             </div>
@@ -1111,23 +1128,32 @@ function generateRandomCode(length = 10) {
 }
 
 async function generateVouchers() {
-    if (!confirm('هل أنت متأكد من توليد 1000 كود جديد؟')) return;
+    const gradesToGen = [
+        { id: '3mid', title: '3 إعدادي' },
+        { id: '1sec', title: '1 ثانوي' },
+        { id: '2sec', title: '2 ثانوي' },
+        { id: '3sec', title: '3 ثانوي' }
+    ];
 
-    const count = 1000;
+    if (!confirm('هل أنت متأكد من توليد 250 كود لكل مرحلة (إجمالي 1000 كود)؟')) return;
+
     const newVouchers = [];
     const chunks = [];
 
-    // Create 1000 vouchers
-    for (let i = 0; i < count; i++) {
-        const code = generateRandomCode(10);
-        newVouchers.push({
-            code: code,
-            isUsed: false,
-            isActive: true,
-            note: '',
-            createdAt: new Date().toISOString() // Using ISO string instead of serverTimestamp for array sync
-        });
-    }
+    // Create 250 vouchers per grade
+    gradesToGen.forEach(g => {
+        for (let i = 0; i < 250; i++) {
+            const code = generateRandomCode(10);
+            newVouchers.push({
+                code: code,
+                grade: g.id,
+                isUsed: false,
+                isActive: true,
+                note: '',
+                createdAt: new Date().toISOString()
+            });
+        }
+    });
 
     // Firestore batch limit is 500
     for (let i = 0; i < newVouchers.length; i += 500) {
@@ -1140,13 +1166,13 @@ async function generateVouchers() {
             chunk.forEach(vData => {
                 const ref = db.collection('vouchers').doc();
                 batch.set(ref, vData);
-                vData.id = ref.id; // Map ID for local appData
+                vData.id = ref.id;
             });
             await batch.commit();
         }
 
         appData.vouchers.push(...newVouchers);
-        alert('تم توليد 1000 كود بنجاح وحفظهم في السحابة');
+        alert('تم توليد 1000 كود بنجاح (250 لكل مرحلة) وحفظهم في السحابة');
         renderAdminSection('vouchers');
     } catch (error) {
         console.error("Error generating vouchers:", error);
@@ -1165,21 +1191,33 @@ async function checkVoucher(btn) {
     if (voucher) {
         if (voucher.isUsed) return alert('هذا الكود تم استخدامه من قبل');
         if (voucher.isActive === false) return alert('تم إغلاق هذا الكود من قبل الإدارة، برجاء التواصل مع الأستاذ');
+
+        // Verify if voucher matches current selected grade
+        let currentGrade = currentState.selectedGrade;
+        let voucherCategory = currentGrade.startsWith('3sec') ? '3sec' : currentGrade;
+
+        if (voucher.grade && voucher.grade !== voucherCategory) {
+            return alert('هذا الكود مخصص لمرحلة دراسية أخرى، برجاء إدخال كود مخصص لهذه المرحلة');
+        }
+
         try {
             await db.collection('vouchers').doc(voucher.id).update({
                 isUsed: true,
                 usedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             voucher.isUsed = true;
-            localStorage.setItem('isSystemUnlocked', 'true');
-            alert('تم تفعيل الموقع بنجاح! يمكنك الآن مشاهدة جميع الدروس.');
+
+            // Unlock specific grade
+            localStorage.setItem(`unlocked_${currentGrade}`, 'true');
+
+            alert('تم تفعيل هذه المرحلة بنجاح! يمكنك الآن مشاهدة جميع الدروس الخاصة بها.');
             renderContent();
         } catch (error) {
             console.error("Error updating voucher status:", error);
             alert('فشل تفعيل الكود، تأكد من اتصالك بالإنترنت');
         }
     } else {
-        alert('كود غير صحيح، أو تم استخدامه من قبل');
+        alert('كود غير صحيح، تأكد من كتابة الكود بشكل صحيح');
     }
 }
 
@@ -1388,6 +1426,15 @@ function toggleFullscreen(wrapperId) {
     }
 }
 
+// Seek functionality
+function seek(id, seconds) {
+    const player = ytPlayers[id];
+    if (player && player.getCurrentTime) {
+        const currentTime = player.getCurrentTime();
+        player.seekTo(currentTime + seconds, true);
+    }
+}
+
 // Disable right-click on video wrappers to prevent context menu redirects
 document.addEventListener('contextmenu', (e) => {
     if (e.target.closest('.video-preview-wrapper, .video-container-wrapper')) {
@@ -1471,4 +1518,58 @@ async function updateVoucherNote(id, note) {
     } catch (error) {
         console.error("Error updating voucher note:", error);
     }
+}
+
+// --- New Voucher UI Helpers ---
+function renderVoucherRows(vouchers) {
+    return vouchers.slice()
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+        .reverse()
+        .map((v, idx, arr) => {
+            const active = v.isActive !== false;
+            const serial = arr.length - idx;
+            const gradeTitle = appData.grades[v.grade]?.title ||
+                (v.grade === '3sec' ? 'الثالث الثانوي' :
+                    (v.grade === '3mid' ? 'الثالث الإعدادي' :
+                        (v.grade === '1sec' ? 'الأول الثانوي' :
+                            (v.grade === '2sec' ? 'الثاني الثانوي' : v.grade || 'غير محدد'))));
+
+            return `
+                <tr>
+                    <td><span style="color: var(--text-muted); font-size: 0.8rem;">#${serial}</span></td>
+                    <td style="font-family: monospace; font-size: 1.1rem; color: var(--primary-light);">${v.code}</td>
+                    <td><span class="status-badge" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">${gradeTitle}</span></td>
+                    <td>
+                        <input type="text" class="voucher-note-input" 
+                               value="${v.note || ''}" 
+                               placeholder="اكتب اسم الطالب هنا..." 
+                               onblur="updateVoucherNote('${v.id}', this.value)">
+                    </td>
+                    <td>
+                        <span class="status-badge" style="background: ${v.isUsed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: ${v.isUsed ? '#ef4444' : '#22c55e'};">
+                            ${v.isUsed ? 'مُستخدم' : 'متاح'}
+                        </span>
+                        <span class="status-badge" style="background: ${active ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; color: ${active ? '#22c55e' : '#f59e0b'}; margin-right: 5px;">
+                            ${active ? 'مفعل' : 'مغلق'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn-primary" style="background: ${active ? '#f59e0b' : '#22c55e'}; padding: 5px 10px;" onclick="toggleVoucherStatus('${v.id}', ${active})">
+                            <i class="fas fa-${active ? 'pause' : 'play'}"></i> ${active ? 'إغلاق' : 'تفعيل'}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+}
+
+function filterVouchersByGrade(grade) {
+    const tbody = document.getElementById('vouchers-table-body');
+    if (!tbody) return;
+
+    const filtered = grade === 'all'
+        ? appData.vouchers
+        : appData.vouchers.filter(v => v.grade === grade);
+
+    tbody.innerHTML = renderVoucherRows(filtered);
 }

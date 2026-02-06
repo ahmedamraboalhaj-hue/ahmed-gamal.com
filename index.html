@@ -443,9 +443,17 @@
                     <div class="shield-bottom-right"></div>
                     <div class="shield-bottom-left"></div>
                     <div class="custom-controls">
+                        <button class="custom-seek-btn" onclick="event.stopPropagation(); seek('intro', -10)"
+                            title="تراجع 10 ثواني">
+                            <i class="fas fa-undo"></i>
+                        </button>
                         <div class="progress-container" onclick="event.stopPropagation(); handleSeek(event, 'intro')">
                             <div class="progress-bar" id="progress-intro"></div>
                         </div>
+                        <button class="custom-seek-btn" onclick="event.stopPropagation(); seek('intro', 10)"
+                            title="تقدم 10 ثواني">
+                            <i class="fas fa redo"></i>
+                        </button>
                         <button class="custom-fs-btn" title="تكبير الشاشة"
                             onclick="event.stopPropagation(); toggleFullscreen('intro-video-wrapper')">
                             <i class="fas fa-expand"></i>

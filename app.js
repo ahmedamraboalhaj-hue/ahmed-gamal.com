@@ -971,6 +971,26 @@ function renderAdminSection(section) {
         main.innerHTML = `<h3>إدارة المجموعات</h3><p>يمكنك تعديل أسماء المجموعات من خلال مصفوفة appData في ملف app.js حالياً.</p>`;
     } else if (section === 'settings') {
         main.innerHTML = `<h3>الإعدادات</h3><p>الإعدادات العامة للمنصة ستتوفر قريباً.</p>`;
+    } else if (section === 'reset-system') {
+        main.innerHTML = `
+            <div class="glass" style="padding: 40px; border: 1px solid #ef4444; text-align: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #ef4444; margin-bottom: 20px;"></i>
+                <h2 style="color: #ef4444; margin-bottom: 20px;">تصفير النظام بالكامل</h2>
+                <p style="font-size: 1.2rem; margin-bottom: 30px;">
+                    انتبه! هذه العملية ستقوم بحذف <b>كل شيء</b> قمت بإضافته (الدروس، الاختبارات، المذكرات، الطلاب، سجلات الزيارات، وأكواد التفعيل).
+                    <br>
+                    استخدم هذا الخيار فقط إذا كنت مستعداً لبدء العمل الرسمي وتصفير بيانات التدريب السابقة.
+                </p>
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <button class="btn-primary" style="background: #ef4444; padding: 15px 40px; font-size: 1.1rem;" onclick="resetFullSystem()">
+                        <i class="fas fa-trash-alt"></i> نعم، قم بتصفير النظام الآن
+                    </button>
+                    <button class="btn-primary" style="background: #6366f1; padding: 15px 40px; font-size: 1.1rem;" onclick="renderAdminSection('dashboard')">
+                        إلغاء والعودة
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     if (section === 'add-lesson') updateAdminBranches('lesson');
@@ -1572,4 +1592,47 @@ function filterVouchersByGrade(grade) {
         : appData.vouchers.filter(v => v.grade === grade);
 
     tbody.innerHTML = renderVoucherRows(filtered);
+}
+
+async function resetFullSystem() {
+    const confirmation = confirm("⚠️ تحذير نهائي: هل أنت متأكد من حذف كافة البيانات (دروس، طلاب، اختبارات، أكواد، إلخ)؟ لا يمكن التراجع عن هذه الخطوة!");
+    if (!confirmation) return;
+
+    const secondConfirmation = prompt("لتأكيد الحذف، اكتب كلمة 'تصفير' في المربع أدناه:");
+    if (secondConfirmation !== 'تصفير') {
+        alert("إجراء ملغي: الكلمة غير صحيحة");
+        return;
+    }
+
+    const collections = ['lessons', 'exams', 'files', 'vouchers', 'students', 'visits'];
+
+    try {
+        // Show loading state
+        document.getElementById('admin-content-area').innerHTML = `
+            <div style="text-align: center; padding: 50px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--primary-light);"></i>
+                <h3 style="margin-top: 20px;">جاري تصفير النظام... برجاء عدم إغلاق الصفحة</h3>
+            </div>
+        `;
+
+        for (const coll of collections) {
+            const snapshot = await db.collection(coll).get();
+            const batch = db.batch();
+            snapshot.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
+
+        // Clear local storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        alert("تم تصفير النظام بنجاح! سيتم إعادة تحميل الصفحة الآن.");
+        window.location.reload();
+
+    } catch (error) {
+        console.error("Error resetting system:", error);
+        alert("حدث خطأ أثناء تصفير النظام. برجاء المحاولة مرة أخرى أو التواصل مع المبرمج.");
+    }
 }

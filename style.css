@@ -706,7 +706,9 @@ body {
     width: 100%;
     height: 100%;
     z-index: 1;
+    border-radius: 20px 20px 0 0;
 }
+
 
 /* Improved Total Shield - Radical Solution */
 .video-overlay-shield.total-shield {
@@ -2263,9 +2265,40 @@ select:focus {
 }
 
 .video-preview-wrapper:hover .custom-controls,
-.video-container-wrapper:hover .custom-controls {
+.video-container-wrapper:hover .custom-controls,
+.video-preview-wrapper.paused .custom-controls {
     opacity: 1;
+    pointer-events: auto;
 }
+
+@media (max-width: 768px) {
+    .custom-controls {
+        height: 50px;
+        padding: 0 10px;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+        opacity: 1;
+        /* Always visible on mobile for easier access */
+        pointer-events: auto;
+    }
+
+    .custom-seek-btn,
+    .custom-fs-btn {
+        width: 35px;
+        height: 35px;
+        margin: 0 3px;
+    }
+
+    .progress-container {
+        margin-left: 10px;
+    }
+
+    .shield-bottom-right {
+        width: 120px;
+        height: 50px;
+        bottom: 50px;
+    }
+}
+
 
 .custom-fs-btn,
 .custom-seek-btn {

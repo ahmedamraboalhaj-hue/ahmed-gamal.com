@@ -110,23 +110,37 @@ function checkStudentSession() {
 
 async function loadInitialData() {
     try {
-        const lessonsSnap = await db.collection('lessons').get();
-        appData.lessons = lessonsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Real-time listeners for all main collections
+        db.collection('lessons').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.lessons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentState.selectedGrade) renderContent();
+            });
 
-        const examsSnap = await db.collection('exams').get();
-        appData.exams = examsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        db.collection('exams').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.exams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentState.selectedGrade) renderContent();
+            });
 
-        const filesSnap = await db.collection('files').get();
-        appData.files = filesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        db.collection('files').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.files = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentState.selectedGrade) renderContent();
+            });
 
-        const vouchersSnap = await db.collection('vouchers').get();
-        appData.vouchers = vouchersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        db.collection('vouchers').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.vouchers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const activeSection = document.querySelector('.admin-nav li.active')?.dataset.section;
+                if (currentState.isAdmin && activeSection === 'vouchers') {
+                    renderAdminSection(activeSection);
+                }
+            });
 
-        // Real-time listeners for meaningful admin updates
         db.collection('students').orderBy('createdAt', 'desc')
             .onSnapshot(snapshot => {
                 appData.students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Update dashboard if currently viewing statistics or students list
                 const activeSection = document.querySelector('.admin-nav li.active')?.dataset.section;
                 if (currentState.isAdmin && (activeSection === 'dashboard' || activeSection === 'students-list')) {
                     renderAdminSection(activeSection);
@@ -146,6 +160,7 @@ async function loadInitialData() {
         console.error("Error loading data from Firebase:", error);
     }
 }
+
 
 function initEventListeners() {
     const adminBtn = document.getElementById('admin-login-btn');
@@ -580,7 +595,12 @@ function renderAdminSection(section) {
             </div>
 
             <div class="vouchers-table-container" style="margin-top: 30px;">
-                <h4 style="padding: 20px;">النمو المالي والطلابي (آخر 30 يوم) 📅</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+                    <h4 style="margin: 0;">النمو المالي والطلابي (آخر 30 يوم) 📅</h4>
+                    <button class="btn-primary" style="background: #ef4444; font-size: 0.9rem;" onclick="resetStatistics()">
+                        <i class="fas fa-undo"></i> تصفير الإحصائيات (الزيارات والطلاب)
+                    </button>
+                </div>
                 <table style="width: 100%;">
                     <thead>
                         <tr>
@@ -612,6 +632,7 @@ function renderAdminSection(section) {
                     </tbody>
                 </table>
             </div>
+
         `;
     } else if (section === 'add-lesson') {
         main.innerHTML = `
@@ -670,10 +691,16 @@ function renderAdminSection(section) {
                                 <td>${appData.grades[l.grade]?.title || l.grade}</td>
                                 <td>${l.branch}</td>
                                 <td>
-                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px;" onclick="deleteItem('lessons', '${l.id}')">
-                                        <i class="fas fa-trash"></i> حذف
-                                    </button>
+                                    <div style="display: flex; gap: 5px;">
+                                        <a href="${l.url}" target="_blank" class="btn-primary" style="background: #3b82f6; padding: 5px 10px; text-decoration: none; font-size: 0.8rem;">
+                                            <i class="fas fa-external-link-alt"></i> معاينة
+                                        </a>
+                                        <button class="btn-primary" style="background: #ef4444; padding: 5px 10px; font-size: 0.8rem;" onclick="deleteItem('lessons', '${l.id}')">
+                                            <i class="fas fa-trash"></i> حذف
+                                        </button>
+                                    </div>
                                 </td>
+
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1354,8 +1381,9 @@ function initYTPlayer(id, videoId, elementId = null) {
             'disablekb': 1,
             'fs': 0,
             'enablejsapi': 1,
-            'origin': window.location.origin
+            'origin': window.location.protocol === 'file:' ? '*' : window.location.origin
         },
+
         events: {
             'onStateChange': (event) => onPlayerStateChange(event, id)
         }
@@ -1371,12 +1399,15 @@ function onPlayerStateChange(event, id) {
     if (event.data == YT.PlayerState.PLAYING) {
         if (playOverlay) playOverlay.style.opacity = '0';
         if (playIcon) playIcon.className = 'fas fa-pause';
+        if (wrapper) wrapper.classList.remove('paused');
         startProgressLoop(id);
     } else {
         if (playOverlay) playOverlay.style.opacity = '1';
         if (playIcon) playIcon.className = 'fas fa-play';
+        if (wrapper) wrapper.classList.add('paused');
         stopProgressLoop(id);
     }
+
 }
 
 let progressIntervals = {};
@@ -1594,9 +1625,52 @@ function filterVouchersByGrade(grade) {
     tbody.innerHTML = renderVoucherRows(filtered);
 }
 
+async function resetStatistics() {
+    const confirmation = confirm("⚠️ تحذير: هل أنت متأكد من تصفير إحصائيات الطلاب والزيارات وإعادة تعيين الأكواد كمتاحة؟ لن يتم حذف الدروس أو الاختبارات.");
+    if (!confirmation) return;
+
+    try {
+        // 1. Clear students and visits
+        const collections = ['students', 'visits'];
+        for (const coll of collections) {
+            const snapshot = await db.collection(coll).get();
+            const batch = db.batch();
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
+
+        // 2. Reset voucher usage (Set isUsed to false but keep the codes)
+        const voucherSnapshot = await db.collection('vouchers').get();
+        const voucherBatch = db.batch();
+        voucherSnapshot.docs.forEach(doc => {
+            voucherBatch.update(doc.ref, {
+                isUsed: false,
+                usedAt: null,
+                note: ''
+            });
+        });
+        await voucherBatch.commit();
+
+        appData.students = [];
+        appData.visits = [];
+        appData.vouchers.forEach(v => {
+            v.isUsed = false;
+            v.usedAt = null;
+            v.note = '';
+        });
+
+        alert("تم تصفير الإحصائيات وإعادة تعيين الأكواد بنجاح!");
+        renderAdminSection('dashboard');
+    } catch (error) {
+        console.error("Error resetting statistics:", error);
+        alert("حدث خطأ أثناء تصفير الإحصائيات");
+    }
+}
+
 async function resetFullSystem() {
     const confirmation = confirm("⚠️ تحذير نهائي: هل أنت متأكد من حذف كافة البيانات (دروس، طلاب، اختبارات، أكواد، إلخ)؟ لا يمكن التراجع عن هذه الخطوة!");
     if (!confirmation) return;
+
 
     const secondConfirmation = prompt("لتأكيد الحذف، اكتب كلمة 'تصفير' في المربع أدناه:");
     if (secondConfirmation !== 'تصفير') {

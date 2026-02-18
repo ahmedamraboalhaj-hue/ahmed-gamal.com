@@ -49,6 +49,8 @@ let appData = {
     exams: [],
     files: [],
     vouchers: [],
+    packages: [],
+    packageVouchers: [],
     students: [],
     visits: []
 };
@@ -100,12 +102,32 @@ function initScrollReveal() {
 
 function checkStudentSession() {
     const session = localStorage.getItem('studentSession');
-    if (!session && !currentState.isAdmin) {
-        document.getElementById('student-login-modal').style.display = 'flex';
-    } else if (session) {
+    const subscribeBtn = document.getElementById('subscribe-btn');
+    if (session) {
         const student = JSON.parse(session);
         logVisit(student);
+        if (subscribeBtn) subscribeBtn.style.display = 'none';
+    } else {
+        if (subscribeBtn) subscribeBtn.style.display = 'block';
     }
+}
+
+function openSubscriptionModal() {
+    const modal = document.getElementById('student-login-modal');
+    const gradeInput = document.getElementById('student-grade');
+    const gradeText = document.getElementById('grade-auto-text');
+
+    // Set the grade automatically from the currently selected grade
+    if (currentState.selectedGrade) {
+        gradeInput.value = currentState.selectedGrade;
+        const gradeTitle = appData.grades[currentState.selectedGrade]?.title || currentState.selectedGrade;
+        if (gradeText) gradeText.textContent = gradeTitle;
+    } else {
+        gradeInput.value = '';
+        if (gradeText) gradeText.textContent = 'سيتم تحديدها تلقائياً';
+    }
+
+    modal.style.display = 'flex';
 }
 
 async function loadInitialData() {
@@ -156,6 +178,19 @@ async function loadInitialData() {
                 }
             });
 
+        db.collection('packages').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.packages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentState.selectedGrade) renderPackages();
+                const activeSection = document.querySelector('.admin-nav li.active')?.dataset.section;
+                if (currentState.isAdmin && activeSection === 'add-package') renderAdminSection('add-package');
+            });
+
+        db.collection('packageVouchers').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.packageVouchers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            });
+
     } catch (error) {
         console.error("Error loading data from Firebase:", error);
     }
@@ -187,6 +222,7 @@ function initEventListeners() {
             const target = btn.dataset.tab;
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById(`${target}-tab`).classList.add('active');
+            if (target === 'packages') renderPackages();
         };
     });
 
@@ -222,7 +258,15 @@ function selectGrade(gradeId) {
     currentState.selectedBranch = 'الكل';
     document.getElementById('grades').classList.add('hidden');
     document.getElementById('content-display').classList.remove('hidden');
-    document.getElementById('current-grade-title').textContent = appData.grades[gradeId].title;
+    document.getElementById('current-grade-title').textContent = appData.grades[gradeId]?.title || gradeId;
+
+    // Show/Hide Subscribe button based on session
+    const session = localStorage.getItem('studentSession');
+    const subscribeBtn = document.getElementById('subscribe-btn');
+    if (subscribeBtn) {
+        subscribeBtn.style.display = session ? 'none' : 'block';
+    }
+
     renderBranchSelection();
     renderContent();
     scrollToSection('content-display');
@@ -282,6 +326,9 @@ function renderContent() {
     filteredLessons.forEach(lesson => {
         const wrapperId = `vid-wrapper-${lesson.id}`;
         const playerId = `player-${lesson.id}`;
+        const ytId = getYouTubeId(lesson.url);
+        const thumbUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+
         if (isGradeUnlocked) {
             lessonsList.innerHTML += `
                 <div class="item-card">
@@ -318,21 +365,27 @@ function renderContent() {
                 </div>
             `;
             // Initialize player after element is in DOM
-            setTimeout(() => initYTPlayer(lesson.id, getYouTubeId(lesson.url)), 100);
+            setTimeout(() => initYTPlayer(lesson.id, ytId), 100);
         } else {
+            // Show thumbnail + title only — video locked, subscribe button shown
             lessonsList.innerHTML += `
-                <div class="item-card locked-card" style="position: relative;">
-                    <div class="video-preview-wrapper" style="background: #121212; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
-                        <i class="fas fa-lock" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 15px;"></i>
-                        <p style="color: white; font-weight: 700; margin-bottom: 15px;">هذا الفيديو محمي بكود تفعيل</p>
-                        <div style="display: flex; gap: 10px; width: 80%;">
-                            <input type="text" class="voucher-input" placeholder="أدخل الكود هنا" style="flex: 1; padding: 8px; border-radius: 5px; border: 1px solid var(--primary-color); background: #000; color: #fff;">
-                            <button class="btn-primary" onclick="checkVoucher(this)">تفعيل</button>
+                <div class="item-card locked-card" style="position: relative; cursor: default;">
+                    <div class="video-preview-wrapper" style="position: relative; overflow: hidden; min-height: 200px; background: #0a0a0a;">
+                        <img src="${thumbUrl}" alt="${lesson.title}" 
+                             style="width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.45);">
+                        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+                            <div style="background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-lock" style="font-size: 1.4rem; color: var(--primary-light);"></i>
+                            </div>
+                            <p style="color: rgba(255,255,255,0.85); font-size: 0.82rem; font-weight: 600; margin: 0;">اشترك لمشاهدة الدرس</p>
                         </div>
                     </div>
                     <div class="item-info">
                         <h4>${lesson.title}</h4>
-                        <p>${lesson.desc}</p>
+                        <p>${lesson.desc || 'درس فيديو توضيحي'}</p>
+                        <button class="btn-primary w-100" style="margin-top: 8px;" onclick="openSubscriptionModal()">
+                            <i class="fas fa-star"></i> اشترك الآن لمشاهدة الدرس
+                        </button>
                     </div>
                 </div>
             `;
@@ -938,8 +991,8 @@ function renderAdminSection(section) {
         `;
     } else if (section === 'students-list') {
         main.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>قائمة الطلاب المسجلين 🎓</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3>قائمة الطلاب المسجلين 🎓 <span style="font-size:0.9rem; color: var(--text-muted); font-weight: 400;">(${appData.students.length} طالب)</span></h3>
                 <button class="btn-primary" onclick="printStudentsList()">
                     <i class="fas fa-print"></i> طباعة القائمة
                 </button>
@@ -949,19 +1002,25 @@ function renderAdminSection(section) {
                 <table id="printable-students-table">
                     <thead>
                         <tr>
-                            <th>الاسم</th>
-                            <th>رقم الهاتف</th>
+                            <th>#</th>
+                            <th>الاسم الرباعي</th>
+                            <th>المحافظة</th>
+                            <th>رقم الطالب</th>
+                            <th>رقم ولي الأمر</th>
                             <th>المرحلة الدراسية</th>
                             <th>تاريخ التسجيل</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${appData.students.map(s => `
+                        ${appData.students.map((s, idx) => `
                             <tr>
-                                <td>${s.name}</td>
-                                <td style="font-family: monospace;">${s.phone || 'N/A'}</td>
-                                <td>${appData.grades[s.grade]?.title || s.grade}</td>
-                                <td>${new Date(s.createdAt).toLocaleDateString('ar-EG')}</td>
+                                <td style="color: var(--text-muted); font-size: 0.85rem;">${idx + 1}</td>
+                                <td style="font-weight: 600;">${s.name}</td>
+                                <td>${s.governorate || '-'}</td>
+                                <td style="font-family: monospace; direction: ltr; text-align: right;">${s.phone || 'N/A'}</td>
+                                <td style="font-family: monospace; direction: ltr; text-align: right;">${s.parentPhone || '-'}</td>
+                                <td><span style="background: rgba(99,102,241,0.15); color: #a5b4fc; padding: 3px 8px; border-radius: 6px; font-size: 0.82rem;">${appData.grades[s.grade]?.title || s.grade}</span></td>
+                                <td style="font-size: 0.85rem;">${new Date(s.createdAt).toLocaleDateString('ar-EG')}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -996,6 +1055,8 @@ function renderAdminSection(section) {
         `;
     } else if (section === 'manage-groups') {
         main.innerHTML = `<h3>إدارة المجموعات</h3><p>يمكنك تعديل أسماء المجموعات من خلال مصفوفة appData في ملف app.js حالياً.</p>`;
+    } else if (section === 'add-package') {
+        renderAddPackageSection(main);
     } else if (section === 'settings') {
         main.innerHTML = `<h3>الإعدادات</h3><p>الإعدادات العامة للمنصة ستتوفر قريباً.</p>`;
     } else if (section === 'reset-system') {
@@ -1270,17 +1331,31 @@ async function checkVoucher(btn) {
 
 async function handleStudentLogin(event) {
     event.preventDefault();
-    const name = document.getElementById('student-name').value;
-    const phone = document.getElementById('student-phone').value;
+
+    // Collect full 4-part name
+    const fname = document.getElementById('student-fname').value.trim();
+    const sname = document.getElementById('student-sname').value.trim();
+    const tname = document.getElementById('student-tname').value.trim();
+    const lname = document.getElementById('student-lname').value.trim();
+    const name = `${fname} ${sname} ${tname} ${lname}`;
+
+    const governorate = document.getElementById('student-governorate').value;
+    const phone = document.getElementById('student-phone').value.trim();
+    const parentPhone = document.getElementById('student-parent-phone').value.trim();
     const grade = document.getElementById('student-grade').value;
 
-    // Check if student already exists in our local data
+    if (!grade) return alert('برجاء اختيار مرحلتك الدراسية أولاً من قائمة الصفوف');
+    if (!governorate) return alert('برجاء اختيار المحافظة');
+
+    // Check if student already exists by phone
     let student = appData.students.find(s => s.phone === phone);
 
     if (!student) {
         const studentData = {
             name,
+            governorate,
             phone,
+            parentPhone,
             grade,
             createdAt: new Date().toISOString()
         };
@@ -1291,21 +1366,22 @@ async function handleStudentLogin(event) {
             appData.students.unshift(studentData);
             student = studentData;
         } catch (error) {
-            console.error("Error saving student:", error);
-            return alert('حدث خطأ أثناء تسجيل الدخول');
+            console.error('Error saving student:', error);
+            return alert('حدث خطأ أثناء تسجيل البيانات، تأكد من اتصالك بالإنترنت');
         }
-    } else {
-        // If student exists but they changed their grade in the form, you might want to update it
-        // but for "uniqueness", we just take the existing record.
     }
 
     localStorage.setItem('studentSession', JSON.stringify(student));
     logVisit(student);
     document.getElementById('student-login-modal').style.display = 'none';
-    alert(`أهلاً بك يا ${student.name} في منصة الأستاذ أحمد جمال رضوان`);
 
-    // Auto select the student's grade
-    selectGrade(student.grade);
+    // Hide Subscribe Button after registration
+    const subscribeBtn = document.getElementById('subscribe-btn');
+    if (subscribeBtn) subscribeBtn.style.display = 'none';
+
+    alert(`أهلاً بك يا ${fname} في منصة الأستاذ أحمد جمال رضوان 🎉\nتم تسجيل بياناتك بنجاح، سيتواصل معك الأستاذ لتفعيل اشتراكك.`);
+
+    if (currentState.selectedGrade === grade) renderContent();
 }
 
 function printStudentsList() {
@@ -1708,5 +1784,411 @@ async function resetFullSystem() {
     } catch (error) {
         console.error("Error resetting system:", error);
         alert("حدث خطأ أثناء تصفير النظام. برجاء المحاولة مرة أخرى أو التواصل مع المبرمج.");
+    }
+}
+
+// ============================================================
+// =================== PACKAGES SYSTEM ========================
+// ============================================================
+
+let currentPackageModal = null;
+
+// --- Render packages for student view ---
+function renderPackages() {
+    const container = document.getElementById('packages-list');
+    if (!container) return;
+
+    const grade = currentState.selectedGrade;
+    const filtered = appData.packages.filter(p => p.grade === grade);
+
+    if (!filtered.length) {
+        container.innerHTML = `<p class="empty-msg" style="grid-column:1/-1;">لا توجد باقات متاحة لهذه المرحلة حالياً</p>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map(pkg => {
+        const isUnlocked = localStorage.getItem(`pkg_unlocked_${pkg.id}`) === 'true';
+        const videos = pkg.videos || [];
+        const thumbsHtml = videos.slice(0, 4).map(v => {
+            const ytId = getYouTubeId(v.url);
+            return `<div style="position:relative;overflow:hidden;border-radius:8px;aspect-ratio:16/9;background:#111;">
+                <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="${v.title}"
+                     style="width:100%;height:100%;object-fit:cover;${isUnlocked ? '' : 'filter:brightness(0.5);'}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-${isUnlocked ? 'play-circle' : 'lock'}" style="color:rgba(255,255,255,0.8);font-size:1.4rem;"></i>
+                </div>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:5px 8px;">
+                    <p style="color:#fff;font-size:0.7rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.title}</p>
+                </div>
+            </div>`;
+        }).join('');
+
+        const extraCount = videos.length > 4 ? videos.length - 4 : 0;
+
+        return `
+        <div class="package-card glass" style="border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);transition:transform 0.3s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
+            <div style="background:var(--gradient-1);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <h3 style="margin:0;font-size:1.1rem;color:#fff;">${pkg.name}</h3>
+                    <p style="margin:4px 0 0;font-size:0.8rem;color:rgba(255,255,255,0.8);">${appData.grades[pkg.grade]?.title || pkg.grade}</p>
+                </div>
+                ${isUnlocked
+                ? `<span style="background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid #4ade80;border-radius:20px;padding:4px 12px;font-size:0.8rem;"><i class="fas fa-check"></i> مفعّلة</span>`
+                : `<div style="text-align:center;">
+                        <div style="font-size:1.5rem;font-weight:800;color:#fff;">${pkg.price} <span style="font-size:0.8rem;">ج.م</span></div>
+                        ${pkg.duration ? `<div style="font-size:0.72rem;color:rgba(255,255,255,0.75);">${pkg.duration}</div>` : ''}
+                       </div>`
+            }
+            </div>
+            <div style="padding:14px;">
+                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:10px;"><i class="fas fa-film"></i> ${videos.length} فيديو في الباقة</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                    ${thumbsHtml}
+                </div>
+                ${extraCount > 0 ? `<p style="color:var(--text-muted);font-size:0.8rem;text-align:center;margin-bottom:8px;">+ ${extraCount} فيديو آخر</p>` : ''}
+                ${pkg.description ? `<p style="color:var(--text-muted);font-size:0.83rem;margin-bottom:12px;">${pkg.description}</p>` : ''}
+                ${isUnlocked
+                ? `<button class="btn-primary w-100" onclick="watchPackage('${pkg.id}')" style="background:linear-gradient(135deg,#22c55e,#16a34a);">
+                        <i class="fas fa-play"></i> مشاهدة الباقة
+                       </button>`
+                : `<button class="btn-primary w-100" onclick="openPackageModal('${pkg.id}')">
+                        <i class="fas fa-star"></i> اشترك في الباقة
+                       </button>`
+            }
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openPackageModal(pkgId) {
+    const pkg = appData.packages.find(p => p.id === pkgId);
+    if (!pkg) return;
+    currentPackageModal = pkg;
+
+    document.getElementById('pkg-modal-name').textContent = pkg.name;
+    document.getElementById('pkg-voucher-input').value = '';
+
+    document.getElementById('pkg-modal-info').innerHTML = `
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <div style="background:rgba(99,102,241,0.1);border-radius:10px;padding:10px 16px;flex:1;min-width:110px;text-align:center;">
+                <div style="font-size:1.6rem;font-weight:800;color:var(--primary-light);">${pkg.price}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);">جنيه مصري</div>
+            </div>
+            ${pkg.duration ? `<div style="background:rgba(34,197,94,0.1);border-radius:10px;padding:10px 16px;flex:1;min-width:110px;text-align:center;">
+                <div style="font-size:1rem;font-weight:700;color:#4ade80;">${pkg.duration}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);">مدة الباقة</div>
+            </div>` : ''}
+            <div style="background:rgba(245,158,11,0.1);border-radius:10px;padding:10px 16px;flex:1;min-width:110px;text-align:center;">
+                <div style="font-size:1.6rem;font-weight:800;color:#fbbf24;">${(pkg.videos || []).length}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);">فيديو</div>
+            </div>
+        </div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:4px;">
+            <i class="fas fa-mobile-alt" style="color:#a5b4fc;"></i>
+            رقم فودافون كاش: <strong style="color:#fff;font-family:monospace;">01204767017</strong>
+        </p>
+        <p style="color:var(--text-muted);font-size:0.82rem;">حوّل المبلغ وأرسل صورة الإيصال عبر واتساب لاستلام الكود</p>
+    `;
+    document.getElementById('package-subscribe-modal').style.display = 'flex';
+}
+
+async function activatePackageVoucher() {
+    const code = document.getElementById('pkg-voucher-input').value.trim().toUpperCase();
+    if (!code) return alert('برجاء إدخال كود الباقة');
+    if (!currentPackageModal) return;
+
+    const voucher = appData.packageVouchers.find(v => v.code === code && v.packageId === currentPackageModal.id);
+    if (!voucher) return alert('كود غير صحيح أو غير مخصص لهذه الباقة');
+    if (voucher.isUsed) return alert('هذا الكود تم استخدامه من قبل');
+
+    try {
+        await db.collection('packageVouchers').doc(voucher.id).update({
+            isUsed: true,
+            usedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        voucher.isUsed = true;
+        localStorage.setItem(`pkg_unlocked_${currentPackageModal.id}`, 'true');
+        document.getElementById('package-subscribe-modal').style.display = 'none';
+        alert(`🎉 تم تفعيل باقة "${currentPackageModal.name}" بنجاح!\nيمكنك الآن مشاهدة جميع الفيديوهات.`);
+        renderPackages();
+    } catch (err) {
+        console.error(err);
+        alert('فشل التفعيل، تأكد من اتصالك بالإنترنت');
+    }
+}
+
+function subscribeViaWhatsApp() {
+    if (!currentPackageModal) return;
+    const pkg = currentPackageModal;
+    const text = encodeURIComponent(
+        `السلام عليكم أستاذ أحمد 👋\n\nأريد الاشتراك في الباقة التالية:\n\n📦 *${pkg.name}*\n💰 السعر: ${pkg.price} ج.م\n${pkg.duration ? `⏱️ المدة: ${pkg.duration}\n` : ''}📚 المرحلة: ${appData.grades[pkg.grade]?.title || pkg.grade}\n\nسأقوم بتحويل المبلغ على فودافون كاش وإرسال صورة الإيصال.`
+    );
+    window.open(`https://wa.me/201204767017?text=${text}`, '_blank');
+}
+
+function watchPackage(pkgId) {
+    const pkg = appData.packages.find(p => p.id === pkgId);
+    if (!pkg) return;
+    const videos = pkg.videos || [];
+    if (!videos.length) return alert('لا توجد فيديوهات في هذه الباقة');
+
+    const existing = document.getElementById('watch-package-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'watch-package-modal';
+    modal.className = 'modal';
+    modal.style.cssText = 'display:flex;z-index:6000;';
+    modal.innerHTML = `
+        <div class="modal-content glass" style="max-width:800px;width:95%;max-height:90vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3 style="margin:0;">${pkg.name}</h3>
+                <button onclick="document.getElementById('watch-package-modal').remove()" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
+            </div>
+            <div style="display:grid;gap:12px;">
+                ${videos.map((v, i) => {
+        const ytId = getYouTubeId(v.url);
+        const wrapperId = `pkg-vid-wrapper-${pkgId}-${i}`;
+        const playerId = `pkg-player-${pkgId}-${i}`;
+        const vid_key = `pkg-${pkgId}-${i}`;
+        return `
+                    <div class="item-card" style="margin:0;">
+                        <div class="video-preview-wrapper" id="${wrapperId}">
+                            <div id="${playerId}"></div>
+                            <div class="video-overlay-shield total-shield" onclick="togglePlayPause('${vid_key}')" ondblclick="toggleFullscreen('${wrapperId}')">
+                                <div class="play-overlay"><i class="fas fa-play"></i></div>
+                                <div class="shield-top"></div><div class="shield-center-top"></div>
+                                <div class="shield-bottom-right"></div><div class="shield-bottom-left"></div>
+                                <div class="custom-controls">
+                                    <button class="custom-seek-btn" onclick="event.stopPropagation();seek('${vid_key}',-10)"><i class="fas fa-undo"></i></button>
+                                    <div class="progress-container" onclick="event.stopPropagation();handleSeek(event,'${vid_key}')">
+                                        <div class="progress-bar" id="progress-${vid_key}"></div>
+                                    </div>
+                                    <button class="custom-seek-btn" onclick="event.stopPropagation();seek('${vid_key}',10)"><i class="fas fa-redo"></i></button>
+                                    <button class="custom-fs-btn" onclick="event.stopPropagation();toggleFullscreen('${wrapperId}')"><i class="fas fa-expand"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="item-info"><h4>${v.title}</h4></div>
+                    </div>`;
+    }).join('')}
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    videos.forEach((v, i) => {
+        setTimeout(() => initYTPlayer(`pkg-${pkgId}-${i}`, getYouTubeId(v.url)), 200 + i * 150);
+    });
+}
+
+// ---- Admin: Add Package Section ----
+function renderAddPackageSection(main) {
+    main.innerHTML = `
+        <h3>إضافة باقة جديدة 📦</h3>
+        <div class="admin-form-container">
+            <div class="form-group">
+                <label>اسم الباقة</label>
+                <input type="text" id="pkg-name" placeholder="مثلاً: باقة الجبر والهندسة الكاملة">
+            </div>
+            <div class="form-group">
+                <label>وصف الباقة (اختياري)</label>
+                <input type="text" id="pkg-desc" placeholder="مثلاً: تشمل جميع دروس الجبر والهندسة">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin:0;">
+                    <label>السعر (ج.م)</label>
+                    <input type="number" id="pkg-price" placeholder="150" min="0">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>مدة الباقة</label>
+                    <input type="text" id="pkg-duration" placeholder="شهر كامل">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>المرحلة الدراسية</label>
+                    <select id="pkg-grade">
+                        <option value="3mid">الصف الثالث الإعدادي</option>
+                        <option value="1sec">الصف الأول الثانوي</option>
+                        <option value="2sec">الصف الثاني الثانوي</option>
+                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
+                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;">
+            <h4 style="margin-bottom:12px;"><i class="fas fa-film"></i> فيديوهات الباقة</h4>
+            <div id="pkg-video-rows"></div>
+            <button class="btn-secondary" onclick="addPkgVideoRow()" style="margin-top:10px;">
+                <i class="fas fa-plus"></i> إضافة فيديو
+            </button>
+        </div>
+
+        <button class="btn-primary" onclick="saveNewPackage()" style="margin-top:24px;">
+            <i class="fas fa-save"></i> حفظ الباقة
+        </button>
+
+        <hr style="margin:40px 0;border:1px solid var(--glass-border);">
+        <h3>الباقات المضافة</h3>
+        <div style="display:grid;gap:16px;">
+            ${appData.packages.length === 0
+            ? '<p style="color:var(--text-muted);">لا توجد باقات مضافة بعد</p>'
+            : appData.packages.map(pkg => {
+                const pkgVouchers = appData.packageVouchers.filter(v => v.packageId === pkg.id);
+                const usedCount = pkgVouchers.filter(v => v.isUsed).length;
+                return `
+                    <div class="glass" style="border-radius:12px;padding:16px;border:1px solid var(--glass-border);">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <h4 style="margin:0 0 4px;">${pkg.name}</h4>
+                                <p style="color:var(--text-muted);font-size:0.85rem;margin:0;">
+                                    ${appData.grades[pkg.grade]?.title || pkg.grade} | ${pkg.price} ج.م | ${pkg.duration || 'غير محدد'} | ${(pkg.videos || []).length} فيديو
+                                </p>
+                                <p style="color:#a5b4fc;font-size:0.82rem;margin:6px 0 0;">
+                                    أكواد: ${pkgVouchers.length} إجمالي | ${usedCount} مستخدم | ${pkgVouchers.length - usedCount} متاح
+                                </p>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn-primary" style="background:#6366f1;padding:6px 14px;font-size:0.85rem;" onclick="generatePackageVouchers('${pkg.id}','${pkg.name.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-key"></i> توليد أكواد
+                                </button>
+                                <button class="btn-primary" style="background:#3b82f6;padding:6px 14px;font-size:0.85rem;" onclick="viewPackageVouchers('${pkg.id}')">
+                                    <i class="fas fa-list"></i> عرض الأكواد
+                                </button>
+                                <button class="btn-primary" style="background:#ef4444;padding:6px 14px;font-size:0.85rem;" onclick="deletePackage('${pkg.id}')">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('')}
+        </div>
+    `;
+    if (document.getElementById('pkg-video-rows').children.length === 0) addPkgVideoRow();
+}
+
+let pkgVideoRowCount = 0;
+function addPkgVideoRow() {
+    pkgVideoRowCount++;
+    const container = document.getElementById('pkg-video-rows');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:10px;align-items:center;';
+    row.innerHTML = `
+        <input type="text" class="pkg-vid-title" placeholder="اسم الفيديو" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
+        <input type="text" class="pkg-vid-url" placeholder="رابط يوتيوب" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
+        <button onclick="this.parentElement.remove()" style="background:#ef4444;border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+async function saveNewPackage() {
+    const name = document.getElementById('pkg-name').value.trim();
+    const desc = document.getElementById('pkg-desc').value.trim();
+    const price = document.getElementById('pkg-price').value;
+    const duration = document.getElementById('pkg-duration').value.trim();
+    const grade = document.getElementById('pkg-grade').value;
+    if (!name || !price) return alert('برجاء إدخال اسم الباقة والسعر');
+
+    const rows = document.querySelectorAll('.pkg-vid-title');
+    const urlRows = document.querySelectorAll('.pkg-vid-url');
+    const videos = [];
+    rows.forEach((r, i) => {
+        const title = r.value.trim();
+        const url = urlRows[i].value.trim();
+        if (title && url) videos.push({ title, url });
+    });
+    if (videos.length === 0) return alert('برجاء إضافة فيديو واحد على الأقل');
+
+    try {
+        await db.collection('packages').add({
+            name, description: desc, price: Number(price), duration, grade, videos,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert(`✅ تم حفظ باقة "${name}" بنجاح!`);
+        pkgVideoRowCount = 0;
+        renderAdminSection('add-package');
+    } catch (err) {
+        console.error(err);
+        alert('فشل الحفظ، تأكد من اتصالك بالإنترنت');
+    }
+}
+
+async function generatePackageVouchers(pkgId, pkgName) {
+    const countStr = prompt(`كم كود تريد توليده لباقة "${pkgName}"؟`, '50');
+    if (!countStr) return;
+    const count = parseInt(countStr);
+    if (isNaN(count) || count < 1 || count > 500) return alert('برجاء إدخال عدد بين 1 و 500');
+
+    const vouchers = [];
+    for (let i = 0; i < count; i++) {
+        vouchers.push({ code: 'PKG-' + generateRandomCode(8), packageId: pkgId, isUsed: false, createdAt: new Date().toISOString() });
+    }
+    try {
+        const chunks = [];
+        for (let i = 0; i < vouchers.length; i += 500) chunks.push(vouchers.slice(i, i + 500));
+        for (const chunk of chunks) {
+            const batch = db.batch();
+            chunk.forEach(v => { const ref = db.collection('packageVouchers').doc(); batch.set(ref, v); v.id = ref.id; });
+            await batch.commit();
+        }
+        appData.packageVouchers.push(...vouchers);
+        alert(`✅ تم توليد ${count} كود لباقة "${pkgName}" بنجاح!`);
+        renderAdminSection('add-package');
+    } catch (err) {
+        console.error(err);
+        alert('فشل توليد الأكواد');
+    }
+}
+
+function viewPackageVouchers(pkgId) {
+    const pkg = appData.packages.find(p => p.id === pkgId);
+    const vouchers = appData.packageVouchers.filter(v => v.packageId === pkgId);
+    const existing = document.getElementById('pkg-vouchers-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'pkg-vouchers-modal';
+    modal.className = 'modal';
+    modal.style.cssText = 'display:flex;z-index:7000;';
+    modal.innerHTML = `
+        <div class="modal-content glass" style="max-width:650px;width:95%;max-height:85vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="margin:0;">أكواد: ${pkg?.name || ''}</h3>
+                <button onclick="this.closest('.modal').remove()" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
+            </div>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">
+                إجمالي: ${vouchers.length} | مستخدم: ${vouchers.filter(v => v.isUsed).length} | متاح: ${vouchers.filter(v => !v.isUsed).length}
+            </p>
+            <div class="vouchers-table-container">
+                <table>
+                    <thead><tr><th>#</th><th>الكود</th><th>الحالة</th></tr></thead>
+                    <tbody>
+                        ${vouchers.map((v, i) => `
+                            <tr>
+                                <td style="color:var(--text-muted);">${i + 1}</td>
+                                <td style="font-family:monospace;color:var(--primary-light);">${v.code}</td>
+                                <td><span style="background:${v.isUsed ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};color:${v.isUsed ? '#ef4444' : '#22c55e'};padding:3px 10px;border-radius:6px;font-size:0.82rem;">${v.isUsed ? 'مستخدم' : 'متاح'}</span></td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+async function deletePackage(pkgId) {
+    if (!confirm('هل أنت متأكد من حذف هذه الباقة وجميع أكوادها؟')) return;
+    try {
+        await db.collection('packages').doc(pkgId).delete();
+        const snap = await db.collection('packageVouchers').where('packageId', '==', pkgId).get();
+        if (!snap.empty) {
+            const batch = db.batch();
+            snap.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        alert('تم حذف الباقة وأكوادها بنجاح');
+        renderAdminSection('add-package');
+    } catch (err) {
+        console.error(err);
+        alert('فشل الحذف');
     }
 }

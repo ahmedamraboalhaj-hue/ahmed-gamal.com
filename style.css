@@ -2333,3 +2333,29 @@ select:focus {
     border-color: var(--primary-color);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
+
+/* ============ PACKAGES GRID ============ */
+.packages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 28px;
+}
+
+.package-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+}
+
+.package-card:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(212, 175, 55, 0.1);
+}
+
+.w-100 {
+    width: 100%;
+}
+
+@media (max-width: 600px) {
+    .packages-grid {
+        grid-template-columns: 1fr;
+    }
+}

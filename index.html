@@ -87,32 +87,100 @@
         </div>
     </nav>
 
-    <!-- Student Login Modal -->
+    <!-- Student Registration Modal -->
     <div id="student-login-modal" class="modal" style="display: none; z-index: 5000;">
-        <div class="modal-content glass">
-            <h2>تسجيل الدخول للمنصة</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px;">برجاء إدخال بياناتك للمتابعة</p>
+        <div class="modal-content glass" style="max-width: 520px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h2 style="margin: 0; font-size: 1.5rem;">📋 تسجيل في المنصة</h2>
+                <button onclick="document.getElementById('student-login-modal').style.display='none'"
+                    style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1;">✕</button>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">سجّل بياناتك وسيتواصل معك
+                الأستاذ لتفعيل اشتراكك</p>
+
+            <!-- Grade Auto-detected Banner -->
+            <div id="grade-auto-banner"
+                style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); border-radius: 10px; padding: 10px 15px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-graduation-cap" style="color: #818cf8;"></i>
+                <span style="color: #c7d2fe; font-size: 0.9rem;">المرحلة الدراسية: <strong id="grade-auto-text"
+                        style="color: #a5b4fc;">سيتم تحديدها تلقائياً</strong></span>
+            </div>
+
             <form id="student-login-form" onsubmit="handleStudentLogin(event)">
-                <div class="form-group">
-                    <label>الاسم بالكامل</label>
-                    <input type="text" id="student-name" placeholder="أدخل اسمك الثلاثي" required>
+                <input type="hidden" id="student-grade" value="">
+
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label>الاسم الأول</label>
+                        <input type="text" id="student-fname" placeholder="الاسم الأول" required>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>اسم الأب</label>
+                        <input type="text" id="student-sname" placeholder="اسم الأب" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>رقم الهاتف</label>
-                    <input type="tel" id="student-phone" placeholder="أدخل رقم هاتفك" required>
+                <div class="form-row"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label>اسم الجد</label>
+                        <input type="text" id="student-tname" placeholder="اسم الجد" required>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>اسم العائلة</label>
+                        <input type="text" id="student-lname" placeholder="اسم العائلة" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>السنة الدراسية</label>
-                    <select id="student-grade" required>
-                        <option value="" disabled selected>اختر سنتك الدراسية</option>
-                        <option value="3mid">الصف الثالث الإعدادي</option>
-                        <option value="1sec">الصف الأول الثانوي</option>
-                        <option value="2sec">الصف الثاني الثانوي</option>
-                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
-                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
+
+                <div class="form-group" style="margin-top: 12px;">
+                    <label>المحافظة</label>
+                    <select id="student-governorate" required>
+                        <option value="" disabled selected>اختر المحافظة</option>
+                        <option>القاهرة</option>
+                        <option>الجيزة</option>
+                        <option>الإسكندرية</option>
+                        <option>الدقهلية</option>
+                        <option>البحيرة</option>
+                        <option>الفيوم</option>
+                        <option>الغربية</option>
+                        <option>الإسماعيلية</option>
+                        <option>المنوفية</option>
+                        <option>المنيا</option>
+                        <option>القليوبية</option>
+                        <option>الوادي الجديد</option>
+                        <option>السويس</option>
+                        <option>أسوان</option>
+                        <option>أسيوط</option>
+                        <option>بني سويف</option>
+                        <option>بورسعيد</option>
+                        <option>دمياط</option>
+                        <option>الشرقية</option>
+                        <option>جنوب سيناء</option>
+                        <option>كفر الشيخ</option>
+                        <option>مطروح</option>
+                        <option>الأقصر</option>
+                        <option>قنا</option>
+                        <option>شمال سيناء</option>
+                        <option>سوهاج</option>
+                        <option>البحر الأحمر</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-primary w-100" style="margin-top: 20px;">دخول المنصة</button>
+
+                <div class="form-row"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div class="form-group" style="margin: 0;">
+                        <label>رقم هاتف الطالب</label>
+                        <input type="tel" id="student-phone" placeholder="01XXXXXXXXX" required>
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label>رقم هاتف ولي الأمر</label>
+                        <input type="tel" id="student-parent-phone" placeholder="01XXXXXXXXX" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary w-100"
+                    style="margin-top: 20px; padding: 14px; font-size: 1rem;">
+                    <i class="fas fa-check-circle"></i> تأكيد التسجيل
+                </button>
             </form>
         </div>
     </div>
@@ -310,10 +378,16 @@
         <!-- Dynamic Content Section (Initially Hidden) -->
         <section id="content-display" class="section hidden">
             <div class="container">
-                <div class="content-header">
-                    <button class="btn-back" onclick="goBackToGrades()"><i class="fas fa-arrow-right"></i>
-                        العودة</button>
-                    <h2 id="current-grade-title">اسم المرحلة</h2>
+                <div class="content-header" style="flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-back" onclick="goBackToGrades()"><i class="fas fa-arrow-right"></i>
+                            العودة</button>
+                        <h2 id="current-grade-title" style="margin: 0;">اسم المرحلة</h2>
+                    </div>
+                    <button class="btn-primary" id="subscribe-btn" onclick="openSubscriptionModal()"
+                        style="background: var(--gradient-1); margin-right: auto;">
+                        <i class="fas fa-star neon-text"></i> اشترك الآن
+                    </button>
                 </div>
 
                 <!-- Branch Selection Bar -->
@@ -325,6 +399,7 @@
                 <!-- Lessons & Exams Tabs -->
                 <div class="content-tabs">
                     <button class="tab-btn active" data-tab="lessons">الدروس المرئية</button>
+                    <button class="tab-btn" data-tab="packages">📦 الباقات</button>
                     <button class="tab-btn" data-tab="exams">الاختبارات</button>
                     <button class="tab-btn" data-tab="files">المذكرات والملفات</button>
                 </div>
@@ -332,6 +407,12 @@
                 <div id="lessons-tab" class="tab-content active">
                     <div id="lessons-list" class="items-grid">
                         <!-- Dynamic Lessons -->
+                    </div>
+                </div>
+
+                <div id="packages-tab" class="tab-content">
+                    <div id="packages-list" class="packages-grid">
+                        <!-- Dynamic Packages -->
                     </div>
                 </div>
 
@@ -348,6 +429,41 @@
                 </div>
             </div>
         </section>
+
+        <!-- Package Subscribe Modal -->
+        <div id="package-subscribe-modal" class="modal" style="display:none; z-index:5000;">
+            <div class="modal-content glass" style="max-width:500px; width:95%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h2 style="margin:0; font-size:1.4rem;">📦 <span id="pkg-modal-name"></span></h2>
+                    <button onclick="document.getElementById('package-subscribe-modal').style.display='none'"
+                        style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
+                </div>
+                <div id="pkg-modal-info" style="margin-bottom:20px;"></div>
+                <!-- Voucher activation -->
+                <div
+                    style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:16px;margin-bottom:16px;">
+                    <p style="color:#a5b4fc;font-size:0.9rem;margin-bottom:10px;"><i class="fas fa-key"></i> عندك كود
+                        تفعيل؟ أدخله هنا:</p>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="pkg-voucher-input" placeholder="أدخل كود الباقة"
+                            style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(99,102,241,0.5);background:#0a0a0a;color:#fff;font-family:monospace;">
+                        <button class="btn-primary" onclick="activatePackageVoucher()" style="white-space:nowrap;"><i
+                                class="fas fa-check"></i> تفعيل</button>
+                    </div>
+                </div>
+                <!-- WhatsApp subscribe -->
+                <div style="text-align:center;">
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">أو اشترك الآن وادفع عبر
+                        فودافون كاش:</p>
+                    <button class="btn-primary w-100" onclick="subscribeViaWhatsApp()"
+                        style="background:linear-gradient(135deg,#25d366,#128c7e);font-size:1rem;padding:14px;">
+                        <i class="fab fa-whatsapp"></i> اشترك الآن عبر واتساب
+                    </button>
+                    <p style="color:var(--text-muted);font-size:0.78rem;margin-top:10px;">سيتم تحويلك لواتساب الأستاذ
+                        لإتمام الاشتراك واستلام الكود</p>
+                </div>
+            </div>
+        </div>
         <!-- Contact Section -->
         <section id="contact" class="section reveal">
             <div class="container">
@@ -481,6 +597,7 @@
                 <ul class="admin-nav">
                     <li class="active" data-section="dashboard"><i class="fas fa-chart-line"></i> الإحصائيات العامة</li>
                     <li data-section="add-lesson"><i class="fas fa-video"></i> إضافة درس فيديو</li>
+                    <li data-section="add-package"><i class="fas fa-box-open"></i> إضافة باقة</li>
                     <li data-section="add-exam"><i class="fas fa-file-alt"></i> إضافة اختبار</li>
                     <li data-section="add-file"><i class="fas fa-file-pdf"></i> إضافة مذكرة/ملف</li>
                     <li data-section="vouchers"><i class="fas fa-key"></i> أكواد التفعيل</li>

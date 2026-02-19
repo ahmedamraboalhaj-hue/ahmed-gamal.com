@@ -19,6 +19,16 @@ const MATH_BRANCHES = ['الكل', 'الجبر', 'الإحصاء', 'حساب ا�
 // Initial Data Structure
 let appData = {
     grades: {
+        '1mid': {
+            title: 'الصف الأول الإعدادي',
+            groups: ['مجموعة 1'],
+            branches: ['الكل', 'جبر', 'هندسة']
+        },
+        '2mid': {
+            title: 'الصف الثاني الإعدادي',
+            groups: ['مجموعة 1'],
+            branches: ['الكل', 'جبر', 'هندسة']
+        },
         '3mid': {
             title: 'الصف الثالث الإعدادي',
             groups: ['مجموعة 1', 'مجموعة 2'],
@@ -52,7 +62,19 @@ let appData = {
     packages: [],
     packageVouchers: [],
     students: [],
-    visits: []
+    visits: [],
+    results: [],
+    settings: {
+        teacherName: 'أحمد جمال رضوان',
+        slogan: 'عبقرية الرياضيات x قوة التكنولوجيا',
+        whatsapp: '201204767017',
+        phone: '01204767017',
+        facebook: 'https://www.facebook.com/share/16wKXQnhRW/',
+        youtube: 'https://www.youtube.com/@mr.ahmedgamal4179',
+        tiktok: 'https://www.tiktok.com/@ahmed_gamal813',
+        heroTitle: 'مع الأستاذ أحمد جمال رضوان',
+        heroSubtitle: 'نفهم الرياضيات بعمق، لنتفوق بذكاء'
+    }
 };
 
 
@@ -151,6 +173,11 @@ async function loadInitialData() {
                 if (currentState.selectedGrade) renderContent();
             });
 
+        db.collection('results').orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                appData.results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            });
+
         db.collection('vouchers').orderBy('createdAt', 'desc')
             .onSnapshot(snapshot => {
                 appData.vouchers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -191,6 +218,15 @@ async function loadInitialData() {
                 appData.packageVouchers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             });
 
+        db.collection('settings').doc('branding')
+            .onSnapshot(doc => {
+                if (doc.exists()) {
+                    appData.settings = { ...appData.settings, ...doc.data() };
+                    updateBrandingUI();
+                }
+            });
+
+        updateBrandingUI();
     } catch (error) {
         console.error("Error loading data from Firebase:", error);
     }
@@ -329,7 +365,32 @@ function renderContent() {
         const ytId = getYouTubeId(lesson.url);
         const thumbUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
 
-        if (isGradeUnlocked) {
+        // Check if grade is unlocked
+        const isGradeUnlocked = localStorage.getItem(`unlocked_${currentState.selectedGrade}`) === 'true';
+
+        // Check if exam-locked
+        let isExamLocked = false;
+        let lockReason = "";
+
+        if (lesson.requiredExamId) {
+            const studentSession = localStorage.getItem('studentSession');
+            if (studentSession) {
+                const student = JSON.parse(studentSession);
+                const bestResult = appData.results
+                    .filter(r => r.examId === lesson.requiredExamId && r.studentPhone === student.phone)
+                    .sort((a, b) => b.score - a.score)[0];
+
+                if (!bestResult || bestResult.score < lesson.minScore) {
+                    isExamLocked = true;
+                    lockReason = `يجب اجتياز ${appData.exams.find(e => e.id === lesson.requiredExamId)?.title || 'الاختبار'} بدرجة ${lesson.minScore} على الأقل لفتح هذا الدرس`;
+                }
+            } else {
+                isExamLocked = true;
+                lockReason = "يجب تسجيل الدخول أولاً";
+            }
+        }
+
+        if (isGradeUnlocked && !isExamLocked) {
             lessonsList.innerHTML += `
                 <div class="item-card">
                     <div class="video-preview-wrapper" id="${wrapperId}">
@@ -367,25 +428,32 @@ function renderContent() {
             // Initialize player after element is in DOM
             setTimeout(() => initYTPlayer(lesson.id, ytId), 100);
         } else {
-            // Show thumbnail + title only — video locked, subscribe button shown
+            // Show locked view
             lessonsList.innerHTML += `
                 <div class="item-card locked-card" style="position: relative; cursor: default;">
                     <div class="video-preview-wrapper" style="position: relative; overflow: hidden; min-height: 200px; background: #0a0a0a;">
                         <img src="${thumbUrl}" alt="${lesson.title}" 
                              style="width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.45);">
-                        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+                        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px; text-align: center;">
                             <div style="background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
                                 <i class="fas fa-lock" style="font-size: 1.4rem; color: var(--primary-light);"></i>
                             </div>
-                            <p style="color: rgba(255,255,255,0.85); font-size: 0.82rem; font-weight: 600; margin: 0;">اشترك لمشاهدة الدرس</p>
+                            <p style="color: #fff; font-size: 0.9rem; font-weight: 600; margin: 0;">${isExamLocked ? lockReason : 'اشترك لمشاهدة الدرس'}</p>
+                            ${isExamLocked && lesson.requiredExamId ? `
+                                <button class="btn-primary" style="font-size: 0.8rem; padding: 8px 15px;" onclick="startExam('${lesson.requiredExamId}')">
+                                    <i class="fas fa-file-alt"></i> اذهب للاختبار الآن
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
                     <div class="item-info">
                         <h4>${lesson.title}</h4>
                         <p>${lesson.desc || 'درس فيديو توضيحي'}</p>
-                        <button class="btn-primary w-100" style="margin-top: 8px;" onclick="openSubscriptionModal()">
-                            <i class="fas fa-star"></i> اشترك الآن لمشاهدة الدرس
-                        </button>
+                        ${!isGradeUnlocked ? `
+                            <button class="btn-primary w-100" style="margin-top: 8px;" onclick="openSubscriptionModal()">
+                                <i class="fas fa-star"></i> اشترك الآن لمشاهدة الدرس
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -435,10 +503,17 @@ function getYouTubeId(url) {
 
 let currentExamData = null;
 let userAnswers = [];
+let examTimer = null;
 
 function startExam(id) {
     const exam = appData.exams.find(e => e.id === id);
     if (!exam || !exam.questions || exam.questions.length === 0) return alert('هذا الاختبار لا يحتوي على أسئلة');
+
+    // Security: One-time access check
+    const takenExams = JSON.parse(localStorage.getItem('takenExams') || '{}');
+    if (takenExams[id]) {
+        return alert('عذراً، لا يمكنك دخول هذا الاختبار مرة أخرى. لقد استنفدت فرصتك الوحيدة.');
+    }
 
     currentExamData = exam;
     userAnswers = new Array(exam.questions.length).fill(null);
@@ -447,54 +522,199 @@ function startExam(id) {
     modal.id = 'exam-taking-modal';
     modal.className = 'exam-overlay';
     modal.innerHTML = `
-        <div class="exam-container glass">
-            <div class="exam-header">
-                <h3>${exam.title}</h3>
-                <span class="close-exam" onclick="closeExam()">&times;</span>
+        <div class="exam-container glass" style="max-width: 950px; width: 95%; height: 95vh; display: flex; flex-direction: column;">
+            <div class="exam-header" style="flex-shrink: 0; padding: 15px 25px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3);">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <h3 style="margin: 0; color: var(--primary-light); font-size: 1.3rem;"><i class="fas fa-file-signature"></i> ${exam.title}</h3>
+                    <div id="exam-timer" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; padding: 6px 15px; border-radius: 8px; font-weight: bold; font-family: monospace; font-size: 1.1rem; min-width: 100px; text-align: center;">
+                        00:00
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem;">
+                        <i class="fas fa-shield-alt"></i> حماية مفعلة: الخروج ينهي الاختبار
+                    </div>
+                </div>
+                <span class="close-exam" onclick="closeExam()" style="cursor: pointer; font-size: 1.5rem; color: var(--text-muted);">&times;</span>
             </div>
-            <div id="exam-questions-list"></div>
-            <button class="btn-primary w-100" onclick="submitExam()">إنهاء الاختبار</button>
+            
+            <div style="flex-grow: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin;">
+                ${exam.imageUrl ? `
+                    <div style="margin-bottom: 30px; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--glass-border); background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                        <img src="${exam.imageUrl}" alt="Exam Sheet" style="width: 100%; height: auto; display: block;">
+                    </div>
+                ` : ''}
+                
+                <div id="exam-questions-list"></div>
+            </div>
+
+            <div class="exam-footer" style="flex-shrink: 0; padding: 20px; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-info-circle"></i> تنبيه: سيتم الإغلاق تلقائياً عند انتهاء الوقت</p>
+                <button class="btn-primary" style="padding: 12px 40px; font-size: 1.1rem; min-width: 250px;" onclick="submitExam()">إنهاء الاختبار</button>
+            </div>
         </div>
     `;
     document.body.appendChild(modal);
     renderExamQuestions();
+
+    // Timer Logic
+    let timeLeft = (exam.duration || 15) * 60;
+    const timerDisplay = document.getElementById('exam-timer');
+
+    examTimer = setInterval(() => {
+        timeLeft--;
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        if (timerDisplay) timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        if (timeLeft <= 0) {
+            clearInterval(examTimer);
+            alert('انتهى الوقت! سيتم تسليم إجاباتك الآن.');
+            submitExam(true);
+        }
+    }, 1000);
+
+    // Anti-Cheat: Lost focus detector
+    window.addEventListener('blur', handleExamCheat);
+    // Anti-Cheat: Tab switch detector
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') handleExamCheat();
+    });
+}
+
+function handleExamCheat() {
+    if (document.getElementById('exam-taking-modal')) {
+        alert('🚨 تحذير: لقد حاولت الخروج من صفحة الاختبار! تم إنهاء الاختبار تلقائياً لحفظ نزاهة التقييم.');
+        submitExam(true); // Forced submit
+    }
 }
 
 function renderExamQuestions() {
     const list = document.getElementById('exam-questions-list');
+    if (!list) return;
     list.innerHTML = '';
-    currentExamData.questions.forEach((q, idx) => {
-        list.innerHTML += `
-            <div class="exam-q-block">
-                <p class="q-title">${idx + 1}. ${q.text}</p>
-                <div class="exam-options">
-                    ${q.opts.map((opt, oIdx) => `
-                        <label class="exam-opt">
-                            <input type="radio" name="q${idx}" value="${oIdx + 1}" onchange="userAnswers[${idx}] = ${oIdx + 1}">
-                            <span>${opt}</span>
-                        </label>
-                    `).join('')}
+
+    if (currentExamData.imageUrl) {
+        // Choice grid for image exams
+        const grid = document.createElement('div');
+        grid.style.display = 'grid';
+        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(180px, 1fr))';
+        grid.style.gap = '20px';
+
+        currentExamData.questions.forEach((q, idx) => {
+            grid.innerHTML += `
+                <div class="exam-q-block" style="padding: 18px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; transition: 0.3s;">
+                    <p style="margin-bottom: 12px; font-weight: bold; color: var(--primary-light); display: flex; justify-content: space-between;">
+                        <span>سؤال ${idx + 1}</span>
+                        <span id="q-status-${idx}" style="font-size: 0.7rem; color: #6366f1; opacity: 0;"><i class="fas fa-check"></i> تم الاختيار</span>
+                    </p>
+                    <div style="display: flex; gap: 8px;">
+                        ${[1, 2, 3, 4].map(num => `
+                            <label style="flex: 1; text-align: center; cursor: pointer; padding: 10px 5px; border: 1.5px solid var(--glass-border); border-radius: 8px; transition: 0.3s; font-weight: bold;" id="label-q${idx}-opt${num}">
+                                <input type="radio" name="q${idx}" value="${num}" style="display:none;" onchange="handleAnswerChange(${idx}, ${num})">
+                                ${num}
+                            </label>
+                        `).join('')}
+                    </div>
                 </div>
-            </div>
-        `;
-    });
+            `;
+        });
+        list.appendChild(grid);
+    } else {
+        // Original text-based
+        currentExamData.questions.forEach((q, idx) => {
+            list.innerHTML += `
+                <div class="exam-q-block glass" style="margin-bottom: 25px; padding: 25px; border-radius: 15px; border: 1px solid var(--glass-border);">
+                    <p class="q-title" style="font-size: 1.15rem; margin-bottom: 20px; line-height: 1.5;">${idx + 1}. ${q.text}</p>
+                    <div class="exam-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        ${q.opts.map((opt, oIdx) => `
+                            <label id="label-q${idx}-opt${oIdx + 1}" style="display: flex; align-items: center; gap: 12px; padding: 15px; background: rgba(255,255,255,0.03); border: 1.5px solid var(--glass-border); border-radius: 10px; cursor: pointer; transition: 0.3s;">
+                                <input type="radio" name="q${idx}" value="${oIdx + 1}" onchange="handleAnswerChange(${idx}, ${oIdx + 1})" style="accent-color: var(--primary-color);">
+                                <span style="font-size: 1rem;">${opt}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+    }
 }
 
-function submitExam() {
-    if (userAnswers.some(a => a === null)) {
-        if (!confirm('لم تقم بالإجابة على جميع الأسئلة، هل تريد الاستمرار؟')) return;
+function handleAnswerChange(qIdx, optNum) {
+    userAnswers[qIdx] = optNum;
+
+    // UI Feedback
+    const status = document.getElementById(`q-status-${qIdx}`);
+    if (status) status.style.opacity = '1';
+
+    // Highlight selected option
+    const max = currentExamData.imageUrl ? 4 : currentExamData.questions[qIdx].opts.length;
+    for (let i = 1; i <= max; i++) {
+        const label = document.getElementById(`label-q${qIdx}-opt${i}`);
+        if (label) {
+            if (i === optNum) {
+                label.style.background = 'var(--primary-color)';
+                label.style.borderColor = 'var(--primary-color)';
+                label.style.color = '#000';
+            } else {
+                label.style.background = 'rgba(255,255,255,0.03)';
+                label.style.borderColor = 'var(--glass-border)';
+                label.style.color = 'inherit';
+            }
+        }
     }
+}
+
+async function submitExam(isForced = false) {
+    if (!isForced && userAnswers.some(a => a === null)) {
+        if (!confirm('لم تقم بالإجابة على جميع الأسئلة، هل تريد الإنهاء فعلاً؟')) return;
+    }
+
     let score = 0;
     currentExamData.questions.forEach((q, idx) => {
         if (parseInt(q.correct) === userAnswers[idx]) score++;
     });
-    alert(`انتهى الاختبار! درجتك هي: ${score} من ${currentExamData.questions.length}`);
+
+    const studentSession = localStorage.getItem('studentSession');
+    const student = studentSession ? JSON.parse(studentSession) : null;
+
+    // Save result to Firebase
+    const resultData = {
+        examId: currentExamData.id,
+        examTitle: currentExamData.title,
+        studentName: student ? student.name : 'طالب زائر',
+        studentPhone: student ? student.phone : 'N/A',
+        studentGrade: student ? student.grade : 'N/A',
+        score: score,
+        total: currentExamData.questions.length,
+        isPassed: score >= (currentExamData.minPassScore || 0),
+        createdAt: new Date().toISOString()
+    };
+
+    try {
+        await db.collection('results').add(resultData);
+    } catch (e) {
+        console.error("Error saving result:", e);
+    }
+
+    // Mark as taken in local storage for instant feedback
+    const takenExams = JSON.parse(localStorage.getItem('takenExams') || '{}');
+    takenExams[currentExamData.id] = {
+        score: score,
+        total: currentExamData.questions.length,
+        time: new Date().toISOString()
+    };
+    localStorage.setItem('takenExams', JSON.stringify(takenExams));
+
+    alert(`انتهى الاختبار! 🎉\n درجتك هي: ${score} من ${currentExamData.questions.length}`);
     closeExam();
 }
 
 function closeExam() {
     const modal = document.getElementById('exam-taking-modal');
-    if (modal) modal.remove();
+    if (modal) {
+        if (examTimer) clearInterval(examTimer);
+        window.removeEventListener('blur', handleExamCheat);
+        modal.remove();
+    }
 }
 
 function scrollToSection(id) {
@@ -719,6 +939,16 @@ function renderAdminSection(section) {
                         <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
                     </select>
                 </div>
+                <div class="form-group" style="grid-column: 1 / -1; background: rgba(99, 102, 241, 0.05); padding: 15px; border-radius: 10px; border: 1px dashed #6366f1;">
+                    <label style="color: #818cf8;"><i class="fas fa-lock"></i> قفل الدرس خلف اختبار (اختياري)</label>
+                    <div style="display: flex; gap: 15px; margin-top: 10px;">
+                        <select id="lesson-required-exam" style="flex: 2;">
+                            <option value="">بدون اختبار (مفتوح)</option>
+                            ${appData.exams.map(e => `<option value="${e.id}">${e.title} (${appData.grades[e.grade]?.title})</option>`).join('')}
+                        </select>
+                        <input type="number" id="lesson-min-score" placeholder="أقل درجة للفتح" style="flex: 1;">
+                    </div>
+                </div>
             </div>
             <button class="btn-primary" onclick="saveNewLesson()">
                 <i class="fas fa-save"></i> حفظ الدرس
@@ -762,73 +992,98 @@ function renderAdminSection(section) {
         `;
     } else if (section === 'add-exam') {
         main.innerHTML = `
-            <h3>إضافة اختبار جديد</h3>
-            <div class="admin-form-container">
-                <div class="form-group">
-                    <label>عنوان الاختبار</label>
-                    <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل">
-                </div>
-                <div class="form-group">
-                    <label>الفرع / المادة</label>
-                    <select id="exam-branch">
-                        ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}">${b}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>المرحلة</label>
-                    <select id="exam-grade" onchange="updateAdminBranches('exam')">
-                        <option value="3mid">الصف الثالث الإعدادي</option>
-                        <option value="1sec">الصف الأول الثانوي</option>
-                        <option value="2sec">الصف الثاني الثانوي</option>
-                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
-                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
-                    </select>
-                </div>
-            </div>
-            <div id="questions-container">
-                <h4>الأسئلة</h4>
-                <div class="question-block glass">
+            <h3>إضافة اختبار جديد 📝</h3>
+            <div class="admin-form-container glass" style="padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
-                        <label>السؤال 1</label>
-                        <textarea class="q-text" placeholder="أدخل نص السؤال"></textarea>
-                    </div>
-                    <div class="options-grid">
-                        <input type="text" class="opt1" placeholder="الاختيار 1">
-                        <input type="text" class="opt2" placeholder="الاختيار 2">
-                        <input type="text" class="opt3" placeholder="الاختيار 3">
-                        <input type="text" class="opt4" placeholder="الاختيار 4">
+                        <label>عنوان الاختبار</label>
+                        <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل">
                     </div>
                     <div class="form-group">
-                        <label>رقم الإجابة الصحيحة</label>
-                        <select class="correct-idx">
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
+                        <label>الفرع / المادة</label>
+                        <select id="exam-branch">
+                            ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}">${b}</option>`).join('')}
                         </select>
                     </div>
                 </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 15px;">
+                    <div class="form-group">
+                        <label>المرحلة</label>
+                        <select id="exam-grade">
+                            <option value="3mid">الصف الثالث الإعدادي</option>
+                            <option value="1sec">الصف الأول الثانوي</option>
+                            <option value="2sec">الصف الثاني الثانوي</option>
+                            <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
+                            <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>درجة النجاح (لفتح الدروس)</label>
+                        <input type="number" id="exam-min-pass-score" placeholder="مثلاً: 17">
+                    </div>
+                    <div class="form-group">
+                        <label>مدة الاختبار (بالدقائق)</label>
+                        <input type="number" id="exam-duration" placeholder="مثلاً: 15">
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px; padding: 15px; background: rgba(212, 175, 55, 0.05); border: 1px dashed var(--primary-color); border-radius: 12px;">
+                    <h4 style="color: var(--primary-light); margin-bottom: 15px;"><i class="fas fa-image"></i> خيار: اختبار عبر صورة (مناسب للرياضيات)</h4>
+                    <div class="form-group">
+                        <label>رابط صورة الامتحان (من جوجل درايف أو غيره)</label>
+                        <input type="text" id="exam-image-url" placeholder="ضع رابط الصورة هنا...">
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>عدد الأسئلة في الصورة</label>
+                        <input type="number" id="exam-image-q-count" placeholder="مثلاً: 10" oninput="renderImageAnswersGrid()">
+                    </div>
+                    <div id="image-answers-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;">
+                        <!-- Grid of correct answers for image-based exam -->
+                    </div>
+                </div>
+
+                <div id="traditional-questions-section" style="margin-top: 30px;">
+                    <h4 style="margin-bottom: 15px;">أو: إضافة أسئلة نصية (اختياري)</h4>
+                    <div id="questions-container">
+                        <div class="question-block glass" style="margin-bottom: 15px; padding: 15px;">
+                            <div class="form-group">
+                                <label>السؤال 1</label>
+                                <textarea class="q-text" placeholder="أدخل نص السؤال"></textarea>
+                            </div>
+                            <div class="options-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                                <input type="text" class="opt1" placeholder="الاختيار 1">
+                                <input type="text" class="opt2" placeholder="الاختيار 2">
+                                <input type="text" class="opt3" placeholder="الاختيار 3">
+                                <input type="text" class="opt4" placeholder="الاختيار 4">
+                            </div>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label>رقم الاختيار الصحيح (1-4)</label>
+                                <input type="number" class="q-correct" min="1" max="4" value="1">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-primary" style="background: #3b82f6;" onclick="addNewQuestionBlock()">
+                        <i class="fas fa-plus"></i> إضافة سؤال نصي آخر
+                    </button>
+                </div>
             </div>
-            <div class="hero-btns" style="margin-top: 20px;">
-                <button class="btn-secondary" onclick="addNewQuestionBlock()">
-                    <i class="fas fa-plus"></i> إضافة سؤال جديد
-                </button>
-                <button class="btn-primary" onclick="saveNewExam()">
-                    <i class="fas fa-save"></i> حفظ الاختبار بالكامل
-                </button>
-            </div>
+            
+            <button class="btn-primary w-100" style="padding: 15px; font-size: 1.1rem;" onclick="saveNewExam()">
+                <i class="fas fa-save"></i> حفظ الاختبار ونشره
+            </button>
 
             <hr style="margin: 40px 0; border: 1px solid var(--glass-border);">
             
             <h3>إدارة الاختبارات المضافة</h3>
             <div class="vouchers-table-container">
-                <table>
+                <table style="width: 100%;">
                     <thead>
                         <tr>
                             <th>العنوان</th>
                             <th>المرحلة</th>
                             <th>الفرع</th>
-                            <th>الأسئلة</th>
+                            <th>النوع</th>
                             <th>إجراءات</th>
                         </tr>
                     </thead>
@@ -838,9 +1093,9 @@ function renderAdminSection(section) {
                                 <td>${e.title}</td>
                                 <td>${appData.grades[e.grade]?.title || e.grade}</td>
                                 <td>${e.branch}</td>
-                                <td>${e.questions?.length || 0} سؤال</td>
+                                <td>${e.imageUrl ? 'صورة' : 'نصي'}</td>
                                 <td>
-                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px;" onclick="deleteItem('exams', '${e.id}')">
+                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px; font-size: 0.8rem;" onclick="deleteItem('exams', '${e.id}')">
                                         <i class="fas fa-trash"></i> حذف
                                     </button>
                                 </td>
@@ -1058,7 +1313,61 @@ function renderAdminSection(section) {
     } else if (section === 'add-package') {
         renderAddPackageSection(main);
     } else if (section === 'settings') {
-        main.innerHTML = `<h3>الإعدادات</h3><p>الإعدادات العامة للمنصة ستتوفر قريباً.</p>`;
+        main.innerHTML = `
+            <h3>إعدادات المنصة والهوية 🎨</h3>
+            <div class="admin-form-container glass" style="padding: 25px; border-radius: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>اسم الأستاذ</label>
+                        <input type="text" id="set-teacher-name" value="${appData.settings.teacherName}">
+                    </div>
+                    <div class="form-group">
+                        <label>شعار المنصة (Slogan)</label>
+                        <input type="text" id="set-slogan" value="${appData.settings.slogan}">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط صورة الأستاذ (Hero Image)</label>
+                        <input type="text" id="set-hero-img" value="${appData.settings.heroImg || 'teacher.jpg'}">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط اللوجو (Logo Image)</label>
+                        <input type="text" id="set-logo-img" value="${appData.settings.logoImg || ''}" placeholder="اتركه فارغاً لاستخدام الأيقونة الافتراضية">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الواتساب (بالكود الدولي)</label>
+                        <input type="text" id="set-whatsapp" value="${appData.settings.whatsapp}">
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف للاتصال</label>
+                        <input type="text" id="set-phone" value="${appData.settings.phone}">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط فيسبوك</label>
+                        <input type="text" id="set-facebook" value="${appData.settings.facebook}">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط يوتيوب</label>
+                        <input type="text" id="set-youtube" value="${appData.settings.youtube}">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط تيك توك</label>
+                        <input type="text" id="set-tiktok" value="${appData.settings.tiktok}">
+                    </div>
+                    <div class="form-group">
+                        <label>عنوان الهيرو (Hero Title)</label>
+                        <input type="text" id="set-hero-title" value="${appData.settings.heroTitle}">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:15px;">
+                    <label>وصف الهيرو (Hero Subtitle)</label>
+                    <textarea id="set-hero-subtitle" style="height:60px; width:100%; education-background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:8px; color:#fff; padding:10px;">${appData.settings.heroSubtitle}</textarea>
+                </div>
+                
+                <button class="btn-primary w-100" style="margin-top:25px; padding:15px;" onclick="saveBrandingSettings()">
+                    <i class="fas fa-save"></i> حفظ الإعدادات وتحديث الموقع فوراً
+                </button>
+            </div>
+        `;
     } else if (section === 'reset-system') {
         main.innerHTML = `
             <div class="glass" style="padding: 40px; border: 1px solid #ef4444; text-align: center;">
@@ -1079,11 +1388,152 @@ function renderAdminSection(section) {
                 </div>
             </div>
         `;
+    } else if (section === 'student-results') {
+        main.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>نتائج الاختبارات والتقييمات 📊</h3>
+                <button class="btn-primary" onclick="printStudentResults()">
+                    <i class="fas fa-print"></i> طباعة النتائج
+                </button>
+            </div>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 30px;">
+                <div class="stat-item glass">
+                    <h4 style="color: var(--primary-light);">${appData.results.length}</h4>
+                    <p>إجمالي التقدم للامتحانات</p>
+                </div>
+                <div class="stat-item glass">
+                    <h4 style="color: #22c55e;">${appData.results.filter(r => r.isPassed).length}</h4>
+                    <p>طلاب اجتازوا</p>
+                </div>
+            </div>
+
+            <div class="vouchers-table-container">
+                <table id="printable-results-table">
+                    <thead>
+                        <tr>
+                            <th>الطالب</th>
+                            <th>المرحلة</th>
+                            <th>الامتحان</th>
+                            <th>الدرجة</th>
+                            <th>النسبة</th>
+                            <th>الحالة</th>
+                            <th>الوقت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.results.map(r => {
+            const percent = Math.round((r.score / r.total) * 100);
+            return `
+                                <tr>
+                                    <td style="font-weight: 600;">${r.studentName} <br> <span style="font-size:0.75rem; color:var(--text-muted);">${r.studentPhone}</span></td>
+                                    <td>${appData.grades[r.studentGrade]?.title || r.studentGrade}</td>
+                                    <td>${r.examTitle}</td>
+                                    <td style="font-weight: bold;">${r.score} / ${r.total}</td>
+                                    <td>${percent}%</td>
+                                    <td>
+                                        <span style="background: ${r.isPassed ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; 
+                                              color: ${r.isPassed ? '#4ade80' : '#f87171'}; 
+                                              padding: 4px 10px; border-radius: 6px; font-size: 0.8rem;">
+                                            ${r.isPassed ? 'اجتاز ✅' : 'لم يجتز ❌'}
+                                        </span>
+                                    </td>
+                                    <td style="font-size: 0.82rem;">${new Date(r.createdAt).toLocaleString('ar-EG')}</td>
+                                </tr>
+                            `;
+        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
     }
 
     if (section === 'add-lesson') updateAdminBranches('lesson');
     if (section === 'add-exam') updateAdminBranches('exam');
     if (section === 'add-file') updateAdminBranches('file');
+}
+
+async function saveBrandingSettings() {
+    const settings = {
+        teacherName: document.getElementById('set-teacher-name').value,
+        slogan: document.getElementById('set-slogan').value,
+        heroImg: document.getElementById('set-hero-img').value,
+        logoImg: document.getElementById('set-logo-img').value,
+        whatsapp: document.getElementById('set-whatsapp').value,
+        phone: document.getElementById('set-phone').value,
+        facebook: document.getElementById('set-facebook').value,
+        youtube: document.getElementById('set-youtube').value,
+        tiktok: document.getElementById('set-tiktok').value,
+        heroTitle: document.getElementById('set-hero-title').value,
+        heroSubtitle: document.getElementById('set-hero-subtitle').value
+    };
+
+    try {
+        await db.collection('settings').doc('branding').set(settings);
+        alert('تم تحديث إعدادات المنصة بنجاح ✅');
+    } catch (error) {
+        console.error("Error saving settings:", error);
+        alert('فشل حفظ الإعدادات');
+    }
+}
+
+function updateBrandingUI() {
+    const s = appData.settings;
+
+    // Update Text
+    document.title = `منصة الأستاذ ${s.teacherName} | رياضيات`;
+
+    const nameEls = document.querySelectorAll('.dynamic-teacher-name');
+    nameEls.forEach(el => el.textContent = s.teacherName);
+
+    const sloganEls = document.querySelectorAll('.dynamic-slogan');
+    sloganEls.forEach(el => el.textContent = s.slogan);
+
+    const heroTitle = document.getElementById('hero-main-title');
+    if (heroTitle) heroTitle.textContent = s.heroTitle;
+
+    const heroSub = document.getElementById('hero-sub-desc');
+    if (heroSub) heroSub.textContent = s.heroSubtitle;
+
+    // Update Images
+    const heroImg = document.getElementById('hero-teacher-img');
+    if (heroImg) heroImg.src = s.heroImg || 'teacher.jpg';
+
+    const logoImg = document.getElementById('dynamic-logo-img');
+    const logoIcon = document.getElementById('dynamic-logo-icon');
+    if (s.logoImg) {
+        if (logoImg) { logoImg.src = s.logoImg; logoImg.style.display = 'block'; }
+        if (logoIcon) logoIcon.style.display = 'none';
+    } else {
+        if (logoImg) logoImg.style.display = 'none';
+        if (logoIcon) logoIcon.style.display = 'flex';
+    }
+
+    // Update Links
+    const waLink = document.getElementById('wa-contact-link');
+    if (waLink) waLink.href = `https://wa.me/${s.whatsapp}`;
+
+    const fbLink = document.getElementById('fb-social-link');
+    if (fbLink) fbLink.href = s.facebook;
+
+    const ytLink = document.getElementById('yt-social-link');
+    if (ytLink) ytLink.href = s.youtube;
+
+    const tkLink = document.getElementById('tk-social-link');
+    if (tkLink) tkLink.href = s.tiktok;
+}
+
+function printStudentResults() {
+    const table = document.getElementById('printable-results-table').outerHTML;
+    const win = window.open('', '', 'height=700,width=900');
+    win.document.write('<html><head><title>نتائج الطلاب - المنصة التعليمية</title>');
+    win.document.write('<style>body{direction:rtl;font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #ddd;padding:12px;text-align:right;} th{background:#f4f4f4;}</style>');
+    win.document.write('</head><body>');
+    win.document.write('<h2>سجل درجات ونتائج الطلاب</h2>');
+    win.document.write(table);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.print();
 }
 
 let questionCount = 1;
@@ -1122,11 +1572,19 @@ async function saveNewLesson() {
     const desc = document.getElementById('lesson-desc').value;
     const grade = document.getElementById('lesson-grade').value;
     const branch = document.getElementById('lesson-branch').value;
+    const requiredExamId = document.getElementById('lesson-required-exam').value;
+    const minScore = parseInt(document.getElementById('lesson-min-score').value) || 0;
+
     if (!url || !title) return alert('برجاء ملء البيانات');
+
     const newLesson = {
-        url, title, grade, branch, desc: desc || 'درس فيديو توضيحي',
+        url, title, grade, branch,
+        desc: desc || 'درس فيديو توضيحي',
+        requiredExamId: requiredExamId || null,
+        minScore: minScore,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+
     try {
         const docRef = await db.collection('lessons').add(newLesson);
         newLesson.id = docRef.id;
@@ -1141,39 +1599,81 @@ async function saveNewLesson() {
 }
 
 async function saveNewExam() {
-    const title = document.getElementById('exam-title').value;
+    const title = document.getElementById('exam-title').value.trim();
     const grade = document.getElementById('exam-grade').value;
     const branch = document.getElementById('exam-branch').value;
-    const blocks = document.querySelectorAll('.question-block');
-    if (!title) return alert('برجاء إدخال عنوان الاختبار');
+    const imageUrl = document.getElementById('exam-image-url').value.trim();
+    const imageQCount = parseInt(document.getElementById('exam-image-q-count').value) || 0;
+    const minPassScore = parseInt(document.getElementById('exam-min-pass-score')?.value) || 0;
+    const duration = parseInt(document.getElementById('exam-duration')?.value) || 15;
+
+    if (!title) return alert('برجاء إدخال عنوان للاختبار');
+
     let questions = [];
-    blocks.forEach(block => {
-        const text = block.querySelector('.q-text').value;
-        const opts = [
-            block.querySelector('.opt1').value,
-            block.querySelector('.opt2').value,
-            block.querySelector('.opt3').value,
-            block.querySelector('.opt4').value
-        ];
-        const correct = block.querySelector('.correct-idx').value;
-        if (text && opts.every(o => o)) questions.push({ text, opts, correct });
-    });
-    if (questions.length === 0) return alert('برجاء إضافة سؤال واحد على الأقل مع كافة بياناته');
-    const newExam = {
+
+    if (imageUrl && imageQCount > 0) {
+        // Handle image-based exam questions
+        for (let i = 1; i <= imageQCount; i++) {
+            const correctChild = document.getElementById(`img-q-correct-${i}`);
+            if (correctChild) {
+                questions.push({
+                    text: `سؤال رقم ${i}`,
+                    opts: ['1', '2', '3', '4'],
+                    correct: correctChild.value
+                });
+            }
+        }
+    } else {
+        // Handle traditional text-based questions
+        const qBlocks = document.querySelectorAll('.question-block');
+        qBlocks.forEach(block => {
+            const text = block.querySelector('.q-text').value.trim();
+            const opts = [
+                block.querySelector('.opt1').value.trim(),
+                block.querySelector('.opt2').value.trim(),
+                block.querySelector('.opt3').value.trim(),
+                block.querySelector('.opt4').value.trim()
+            ];
+            const correctVal = block.querySelector('.q-correct')?.value || block.querySelector('.correct-idx')?.value;
+            if (text) questions.push({ text, opts, correct: correctVal });
+        });
+    }
+
+    if (questions.length === 0) return alert('برجاء إضافة أسئلة للاختبار');
+
+    const examData = {
         title, grade, branch, questions,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        imageUrl: imageUrl || null,
+        minPassScore: minPassScore,
+        duration: duration,
+        createdAt: new Date().toISOString()
     };
+
     try {
-        const docRef = await db.collection('exams').add(newExam);
-        newExam.id = docRef.id;
-        appData.exams.push(newExam);
-        alert('تم حفظ الاختبار بنجاح في السحابة');
-        if (currentState.selectedGrade === grade) renderContent();
-        questionCount = 1;
+        const docRef = await db.collection('exams').add(examData);
+        examData.id = docRef.id;
+        appData.exams.unshift(examData);
+        alert('تم حفظ الاختبار بنجاح 🎉');
         renderAdminSection('add-exam');
     } catch (error) {
-        console.error("Error saving exam:", error);
+        console.error('Error saving exam:', error);
         alert('حدث خطأ أثناء حفظ الاختبار');
+    }
+}
+
+function renderImageAnswersGrid() {
+    const count = parseInt(document.getElementById('exam-image-q-count').value) || 0;
+    const container = document.getElementById('image-answers-grid');
+    if (!container) return;
+
+    container.innerHTML = '';
+    for (let i = 1; i <= count; i++) {
+        container.innerHTML += `
+            <div style="background: rgba(255,255,255,0.05); padding: 5px; border-radius: 5px; text-align: center;">
+                <label style="font-size: 0.7rem; display: block;">س ${i} (الصح)</label>
+                <input type="number" id="img-q-correct-${i}" min="1" max="4" value="1" style="width: 100%; padding: 3px; border-radius: 4px; border: 1px solid var(--glass-border); background: #000; color: #fff; text-align: center;">
+            </div>
+        `;
     }
 }
 
@@ -1237,10 +1737,13 @@ function generateRandomCode(length = 10) {
 
 async function generateVouchers() {
     const gradesToGen = [
+        { id: '1mid', title: '1 إعدادي' },
+        { id: '2mid', title: '2 إعدادي' },
         { id: '3mid', title: '3 إعدادي' },
         { id: '1sec', title: '1 ثانوي' },
         { id: '2sec', title: '2 ثانوي' },
-        { id: '3sec', title: '3 ثانوي' }
+        { id: '3sec-sci', title: '3 ثانوي (علمي)' },
+        { id: '3sec-lit', title: '3 ثانوي (أدبي)' }
     ];
 
     if (!confirm('هل أنت متأكد من توليد 250 كود لكل مرحلة (إجمالي 1000 كود)؟')) return;
@@ -1379,9 +1882,56 @@ async function handleStudentLogin(event) {
     const subscribeBtn = document.getElementById('subscribe-btn');
     if (subscribeBtn) subscribeBtn.style.display = 'none';
 
-    alert(`أهلاً بك يا ${fname} في منصة الأستاذ أحمد جمال رضوان 🎉\nتم تسجيل بياناتك بنجاح، سيتواصل معك الأستاذ لتفعيل اشتراكك.`);
+    // Check if system is already unlocked for this grade
+    const isGradeUnlocked = localStorage.getItem(`unlocked_${grade}`) === 'true';
+    if (isGradeUnlocked) {
+        alert(`أهلاً بك مجدداً يا ${fname} 🎉\nمنصتك مفعلة بالفعل، استمتع بالدروس!`);
+    } else {
+        alert(`أهلاً بك يا ${fname} في منصة الأستاذ أحمد جمال رضوان 🎉\nتم تسجيل بياناتك بنجاح، يمكنك التفعيل الآن بكود أو انتظار تواصل الأستاذ.`);
+    }
 
     if (currentState.selectedGrade === grade) renderContent();
+}
+
+async function activateGradeWithVoucher() {
+    const code = document.getElementById('direct-voucher-input').value.trim();
+    const grade = document.getElementById('student-grade').value;
+
+    if (!grade) return alert('الرجاء اختيار المرحلة الدراسية أولاً');
+    if (!code) return alert('برجاء إدخال كود التفعيل');
+
+    // Check if voucher exists and matches grade
+    const voucher = appData.vouchers.find(v => v.code === code && v.grade === grade && !v.isUsed);
+
+    if (!voucher) {
+        return alert('كود التفعيل غير صحيح، أو غير مخصص لهذه المرحلة، أو تم استخدامه مسبقاً');
+    }
+
+    try {
+        // Mark voucher as used in Firebase
+        await db.collection('vouchers').doc(voucher.id).update({
+            isUsed: true,
+            usedAt: new Date().toISOString()
+        });
+
+        // Update local state
+        voucher.isUsed = true;
+        localStorage.setItem(`unlocked_${grade}`, 'true');
+
+        alert('تم تفعيل المرحلة بنجاح! 🎉 استمتع بالمحتوى التعليمي.');
+
+        // Refresh content if viewing the same grade
+        if (currentState.selectedGrade === grade) {
+            renderContent();
+        }
+
+        // Hide modal
+        document.getElementById('student-login-modal').style.display = 'none';
+
+    } catch (error) {
+        console.error('Error activating voucher:', error);
+        alert('حدث خطأ أثناء تفعيل الكود، يرجى المحاولة لاحقاً');
+    }
 }
 
 function printStudentsList() {

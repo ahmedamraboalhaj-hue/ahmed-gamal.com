@@ -751,14 +751,21 @@ function showAdminDashboard() {
     renderAdminSection('dashboard');
 }
 
-function toggleAdminSidebar() {
+function toggleAdminSidebar(btn) {
     const sidebar = document.getElementById('admin-sidebar');
+    if (!sidebar) return;
     sidebar.classList.toggle('active');
-    const icon = document.querySelector('.admin-menu-toggle i');
-    if (sidebar.classList.contains('active')) {
-        icon.classList.replace('fa-bars', 'fa-times');
-    } else {
-        icon.classList.replace('fa-times', 'fa-bars');
+
+    // If btn is passed (mobile toggle), update its icon
+    if (btn) {
+        const icon = btn.querySelector('i');
+        if (icon) {
+            if (sidebar.classList.contains('active')) {
+                icon.classList.replace('fa-bars', 'fa-times');
+            } else {
+                icon.classList.replace('fa-times', 'fa-bars');
+            }
+        }
     }
 }
 

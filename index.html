@@ -42,9 +42,9 @@
             <div class="text-content">
                 <h1 class="splash-title">
                     <span class="prefix">منصة</span>
-                    <span class="name">أحمد جمال رضوان</span>
+                    <span class="name dynamic-teacher-name">أحمد جمال رضوان</span>
                 </h1>
-                <p class="splash-subtitle">عبقرية الرياضيات x قوة التكنولوجيا</p>
+                <p class="splash-subtitle dynamic-slogan">عبقرية الرياضيات x قوة التكنولوجيا</p>
             </div>
             <div class="loading-container">
                 <div class="loading-bar">
@@ -67,10 +67,11 @@
     <nav id="main-nav">
         <div class="nav-container">
             <div class="logo">
-                <div class="logo-icon">
+                <div class="logo-icon" id="dynamic-logo-icon">
                     <i class="fas fa-infinity"></i>
                 </div>
-                <span>أحمد جمال رضوان</span>
+                <img id="dynamic-logo-img" style="display:none; height:40px; border-radius:8px; margin-right:10px;">
+                <span class="dynamic-teacher-name">أحمد جمال رضوان</span>
             </div>
             <ul class="nav-links">
                 <li><a href="#home" class="active">الرئيسية</a></li>
@@ -97,6 +98,20 @@
             </div>
             <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">سجّل بياناتك وسيتواصل معك
                 الأستاذ لتفعيل اشتراكك</p>
+
+            <!-- Voucher direct activation -->
+            <div id="voucher-direct-section"
+                style="background: rgba(212, 175, 55, 0.08); border: 1px dashed rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                <p style="color: var(--primary-light); font-size: 0.85rem; margin-bottom: 10px; text-align: center;">
+                    <i class="fas fa-key"></i> هل لديك كود تفعيل؟ أدخله هنا للتفعيل الفوري:
+                </p>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="direct-voucher-input" placeholder="أدخل كود التفعيل"
+                        style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: #000; color: #fff; font-family: monospace; text-align: center;">
+                    <button type="button" class="btn-primary" onclick="activateGradeWithVoucher()"
+                        style="white-space: nowrap; padding: 10px 15px;">تفعيل</button>
+                </div>
+            </div>
 
             <!-- Grade Auto-detected Banner -->
             <div id="grade-auto-banner"
@@ -191,10 +206,10 @@
         <section id="home" class="hero">
             <div class="container">
                 <div class="hero-content reveal-left">
-                    <div class="badge">نحو القمة في الرياضيات</div>
-                    <h1><span class="gradient-text">الدحيح</span> في مادة الرياضيات</h1>
-                    <p class="reveal"><span class="typing-container">منصة الأستاذ أحمد جمال رضوان التعليمية - لتبسيط
-                            مفاهيم الرياضيات</span></p>
+                    <div class="badge dynamic-slogan">نحو القمة في الرياضيات</div>
+                    <h1 id="hero-main-title">مع الأستاذ أحمد جمال رضوان</h1>
+                    <p class="reveal"><span class="typing-container" id="hero-sub-desc">نفهم الرياضيات بعمق، لنتفوق
+                            بذكاء</span></p>
                     <div class="hero-btns">
                         <button class="btn-primary btn-lg" onclick="scrollToGrades()">اختر مرحلتك التعليمية</button>
                         <button class="btn-outline btn-lg" onclick="openIntroVideo()"><i class="fas fa-play"></i> فيديو
@@ -223,7 +238,8 @@
                 <div class="about-wrapper">
                     <div class="about-image">
                         <div class="image-frame">
-                            <img src="teacher.jpg" alt="الأستاذ أحمد جمال رضوان" class="teacher-portrait">
+                            <img src="teacher.jpg" alt="الأستاذ أحمد جمال رضوان" class="teacher-portrait"
+                                id="hero-teacher-img">
                             <div class="experience-badge">
                                 <span>+10</span>
                                 <p>سنوات خبرة</p>
@@ -231,8 +247,8 @@
                         </div>
                     </div>
                     <div class="about-text">
-                        <div class="badge">من هو الدحيح؟</div>
-                        <h2>الأستاذ <span class="gradient-text">أحمد جمال رضوان</span></h2>
+                        <div class="badge dynamic-slogan">من هو الدحيح؟</div>
+                        <h2>الأستاذ <span class="gradient-text dynamic-teacher-name">أحمد جمال رضوان</span></h2>
                         <h3>خبير مادة الرياضيات للمرحلة الإعدادية والثانوية</h3>
                         <p>بخبرة تمتد لسنوات في تدريس مادة الرياضيات، استطاع الأستاذ أحمد جمال رضوان بناء منهجية تعليمية
                             فريدة تركز على الفهم العميق قبل الحفظ. نهدف إلى جعل الرياضيات المادة الأمتع والأسهل في رحلتك
@@ -341,6 +357,18 @@
                     <p>نقدم محتوى متخصص لكل مرحلة دراسية لضمان أقصى استفادة</p>
                 </div>
                 <div class="grades-grid">
+                    <div class="grade-card" onclick="selectGrade('1mid')">
+                        <div class="grade-icon"><i class="fas fa-book-open"></i></div>
+                        <h3>الصف الأول الإعدادي</h3>
+                        <p>تأسيس قوي في الرياضيات</p>
+                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
+                    </div>
+                    <div class="grade-card" onclick="selectGrade('2mid')">
+                        <div class="grade-icon"><i class="fas fa-divide"></i></div>
+                        <h3>الصف الثاني الإعدادي</h3>
+                        <p>تكملة رحلة التفوق</p>
+                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
+                    </div>
                     <div class="grade-card" onclick="selectGrade('3mid')">
                         <div class="grade-icon"><i class="fas fa-school"></i></div>
                         <h3>الصف الثالث الإعدادي</h3>
@@ -583,11 +611,11 @@
     <!-- Admin Dashboard (Overlay) -->
     <div id="admin-dashboard" class="admin-overlay hidden">
         <div class="admin-mobile-header">
-            <button class="admin-menu-toggle" onclick="hideAdminDashboard()">
+            <button class="admin-menu-toggle" onclick="hideAdminDashboard()" title="إغلاق لوحة التحكم">
                 <i class="fas fa-times"></i>
             </button>
             <div class="admin-logo" style="margin-bottom: 0; font-size: 1.2rem;">لوحة التحكم</div>
-            <button class="admin-menu-toggle" onclick="toggleAdminSidebar()">
+            <button class="admin-menu-toggle" onclick="toggleAdminSidebar(this)" title="القائمة">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
@@ -601,6 +629,7 @@
                     <li data-section="add-exam"><i class="fas fa-file-alt"></i> إضافة اختبار</li>
                     <li data-section="add-file"><i class="fas fa-file-pdf"></i> إضافة مذكرة/ملف</li>
                     <li data-section="vouchers"><i class="fas fa-key"></i> أكواد التفعيل</li>
+                    <li data-section="student-results"><i class="fas fa-poll-h"></i> نتائج الطلاب</li>
                     <li data-section="students-list"><i class="fas fa-user-graduate"></i> قائمة الطلاب</li>
                     <li data-section="visits-log"><i class="fas fa-history"></i> سجل الزيارات اليومية</li>
                     <li data-section="manage-groups"><i class="fas fa-users-cog"></i> إدارة المجموعات</li>
@@ -624,8 +653,10 @@
             <div class="footer-grid">
                 <div class="footer-info">
                     <div class="logo">
-                        <i class="fas fa-infinity"></i>
-                        <span>أحمد جمال رضوان</span>
+                        <div id="dynamic-logo-icon-footer">
+                            <i class="fas fa-infinity"></i>
+                        </div>
+                        <span class="dynamic-teacher-name">أحمد جمال رضوان</span>
                     </div>
                     <p>نسخر التكنولوجيا لخدمة الطالب وتغيير نظرة الطلاب للرياضيات.</p>
                 </div>
@@ -640,22 +671,23 @@
                 <div class="footer-social">
                     <h3>تابعنا</h3>
                     <div class="social-icons">
-                        <a href="https://www.facebook.com/share/16wKXQnhRW/" target="_blank"><i
+                        <a href="https://www.facebook.com/share/16wKXQnhRW/" target="_blank" id="fb-social-link"><i
                                 class="fab fa-facebook"></i></a>
-                        <a href="https://www.youtube.com/@mr.ahmedgamal4179" target="_blank"><i
+                        <a href="https://www.youtube.com/@mr.ahmedgamal4179" target="_blank" id="yt-social-link"><i
                                 class="fab fa-youtube"></i></a>
-                        <a href="https://www.tiktok.com/@ahmed_gamal813" target="_blank"><i
+                        <a href="https://www.tiktok.com/@ahmed_gamal813" target="_blank" id="tk-social-link"><i
                                 class="fab fa-tiktok"></i></a>
-                        <a href="https://wa.me/201204767017" target="_blank"><i class="fab fa-whatsapp"></i></a>
-                        <a href="tel:01204767017" title="اتصل بنا"><i class="fas fa-phone"></i></a>
-                        <a href="sms:01204767017" title="ارسل رسالة"><i class="fas fa-comment-sms"></i></a>
+                        <a href="https://wa.me/201204767017" target="_blank" id="wa-contact-link"><i
+                                class="fab fa-whatsapp"></i></a>
                     </div>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom"
+                style="display:flex; flex-direction:column; align-items:center; gap:15px; padding-bottom: 30px;">
+                <button id="admin-login-btn" class="btn-admin-link"><i class="fas fa-lock"></i> دخول المسؤول</button>
+                <div style="width:100%; height:1px; background:var(--glass-border); margin: 5px 0;"></div>
                 <p>&copy; 2026 جميع الحقوق محفوظة للأستاذ أحمد جمال رضوان</p>
-                <p>تصميم المهندس <span class="gradient-text">أحمد عمرو ابوالحاج</span> 01001352771 | <button
-                        id="admin-login-btn" class="btn-admin-link">لوحة التحكم</button></p>
+                <p>تصميم المهندس <span class="gradient-text">أحمد عمرو ابوالحاج</span> 01001352771</p>
             </div>
         </div>
     </footer>

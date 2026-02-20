@@ -67,8 +67,8 @@ let appData = {
     settings: {
         teacherName: 'أحمد جمال رضوان',
         slogan: 'عبقرية الرياضيات x قوة التكنولوجيا',
-        whatsapp: '201204767017',
-        phone: '01204767017',
+        whatsapp: '201028164601',
+        phone: '01028164601',
         facebook: 'https://www.facebook.com/share/16wKXQnhRW/',
         youtube: 'https://www.youtube.com/@mr.ahmedgamal4179',
         tiktok: 'https://www.tiktok.com/@ahmed_gamal813',
@@ -542,10 +542,12 @@ function renderContent() {
 }
 
 function getYouTubeId(url) {
-    if (!url) return null;
-    const regExp = /^.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([^#&?]*).*/;
+    if (!url || typeof url !== 'string') return null;
+    url = url.trim();
+    if (url.length === 11 && /^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+    const regExp = /^.*(?:youtu.be\/|v\/|vi\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([a-zA-Z0-9_-]{11}).*/i;
     const match = url.match(regExp);
-    return (match && match[1] && match[1].length === 11) ? match[1] : null;
+    return (match && match[1]) ? match[1] : null;
 }
 
 let currentExamData = null;
@@ -1769,7 +1771,7 @@ function sendWhatsAppMessage(event) {
     const phone = document.getElementById('contact-phone').value;
     const grade = document.getElementById('contact-grade').value;
     const message = document.getElementById('contact-message').value;
-    const whatsappNumber = "201204767017";
+    const whatsappNumber = "201028164601";
     const text = `*رسالة جديدة من الموقع*%0A%0A` +
         `*الاسم:* ${name}%0A` +
         `*رقم الهاتف:* ${phone}%0A` +
@@ -2068,7 +2070,9 @@ function initYTPlayer(id, videoId, elementId = null) {
     }
 
     const targetId = elementId || `player-${id}`;
-    const targetEl = document.getElementById(targetId);
+    let targetEl = document.getElementById(targetId);
+    if (!targetEl) targetEl = document.getElementById(id); // Fallback to direct ID
+    if (!targetEl) targetEl = document.getElementById(`pkg-player-${id.split('pkg-').pop()}`); // Specific fallback for package videos
     if (!targetEl) return; // Prevent errors if element is gone
 
     // Clean up old player if exists
@@ -2458,62 +2462,66 @@ function renderPackages() {
                     <img src="${pkg.imageUrl}" alt="${pkg.name}" 
                          style="width:100%; height:100%; object-fit:cover; display:block; border-radius:16px 16px 0 0;">
                     ${!isUnlocked ? `
-                        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center;">
-                            <i class="fas fa-lock" style="color:#fff; font-size:2rem; text-shadow:0 0 10px rgba(0,0,0,0.5);"></i>
+                        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+                            <div style="background:rgba(0,0,0,0.7); width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,0.2);">
+                                <i class="fas fa-lock" style="color:#fff; font-size:1.8rem;"></i>
+                            </div>
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div style="position:absolute; inset:0; background:linear-gradient(transparent, rgba(0,0,0,0.5));"></div>
+                    `}
                 </div>
             `;
         } else {
             const thumbsHtml = videos.slice(0, 4).map(v => {
                 const ytId = getYouTubeId(v.url);
-                return `<div style="position:relative;overflow:hidden;border-radius:8px;aspect-ratio:16/9;background:#111;">
+                return `<div style="position:relative;overflow:hidden;border-radius:10px;aspect-ratio:16/9;background:#111; border:1px solid rgba(255,255,255,0.1);">
                     <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="${v.title}"
-                         style="width:100%;height:100%;object-fit:cover;${isUnlocked ? '' : 'filter:brightness(0.5);'}">
+                         style="width:100%;height:100%;object-fit:cover;${isUnlocked ? '' : 'filter:brightness(0.4) grayscale(0.5);'}">
                     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-${isUnlocked ? 'play-circle' : 'lock'}" style="color:rgba(255,255,255,0.8);font-size:1.4rem;"></i>
-                    </div>
-                    <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:5px 8px;">
-                        <p style="color:#fff;font-size:0.7rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.title}</p>
+                        <i class="fas fa-${isUnlocked ? 'play-circle' : 'lock'}" style="color:rgba(255,255,255,0.9);font-size:1.6rem; text-shadow:0 2px 10px rgba(0,0,0,0.5);"></i>
                     </div>
                 </div>`;
             }).join('');
 
             topVisualHtml = `
-                <div style="padding:14px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div style="padding:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     ${thumbsHtml}
                 </div>
             `;
         }
 
-        const extraCount = videos.length > (pkg.imageUrl ? 0 : 4) ? videos.length - (pkg.imageUrl ? 0 : 4) : 0;
-
         return `
-        <div class="package-card glass" style="border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);transition:transform 0.3s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
-            <div style="background:var(--gradient-1);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <h3 style="margin:0;font-size:1.1rem;color:#fff;">${pkg.name}</h3>
-                    <p style="margin:4px 0 0;font-size:0.8rem;color:rgba(255,255,255,0.8);">${appData.grades[pkg.grade]?.title || pkg.grade}</p>
-                </div>
-                ${isUnlocked
-                ? `<span style="background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid #4ade80;border-radius:20px;padding:4px 12px;font-size:0.8rem;"><i class="fas fa-check"></i> مفعّلة</span>`
-                : `<div style="text-align:center;">
-                        <div style="font-size:1.5rem;font-weight:800;color:#fff;">${pkg.price} <span style="font-size:0.8rem;">ج.م</span></div>
-                        ${pkg.duration ? `<div style="font-size:0.72rem;color:rgba(255,255,255,0.75);">${pkg.duration}</div>` : ''}
-                       </div>`
-            }
+        <div class="package-card glass" style="border-radius:20px;overflow:hidden;border:1px solid var(--glass-border);transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position:relative; background: rgba(15,15,15,0.7);" onmouseenter="this.style.transform='translateY(-8px)'; this.style.borderColor='var(--primary-light)';" onmouseleave="this.style.transform='translateY(0)'; this.style.borderColor='var(--glass-border)';">
             ${topVisualHtml}
-            <div style="padding:14px; ${pkg.imageUrl ? 'padding-top:0;' : ''}">
-                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:10px;"><i class="fas fa-film"></i> ${videos.length} فيديو في الباقة</p>
+            
+            <div style="padding:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+                    <div style="flex:1;">
+                        <h3 style="margin:0;font-size:1.25rem;color:#fff; font-weight:700; line-height:1.4;">${pkg.name}</h3>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                            <span style="background:rgba(99,102,241,0.15); color:#a5b4fc; padding:3px 10px; border-radius:6px; font-size:0.75rem;"><i class="fas fa-graduation-cap"></i> ${appData.grades[pkg.grade]?.title || pkg.grade}</span>
+                            <span style="color:var(--text-muted); font-size:0.75rem;"><i class="fas fa-video"></i> ${videos.length} حصة</span>
+                        </div>
+                    </div>
+                    ${!isUnlocked ? `
+                        <div style="text-align:left;">
+                            <div style="font-size:1.6rem;font-weight:900;color:var(--primary-light);">${pkg.price}<span style="font-size:0.8rem; font-weight:500; margin-right:3px;">ج.م</span></div>
+                            ${pkg.duration ? `<div style="font-size:0.7rem;color:var(--text-muted); text-align:center; margin-top:2px;">${pkg.duration}</div>` : ''}
+                        </div>
+                    ` : `
+                        <div style="color:#4ade80; font-size:1.8rem; filter: drop-shadow(0 0 8px rgba(74,222,128,0.3));"><i class="fas fa-check-circle"></i></div>
+                    `}
+                </div>
 
-                ${extraCount > 0 ? `<p style="color:var(--text-muted);font-size:0.8rem;text-align:center;margin-bottom:8px;">+ ${extraCount} فيديو آخر</p>` : ''}
-                ${pkg.description ? `<p style="color:var(--text-muted);font-size:0.83rem;margin-bottom:12px;">${pkg.description}</p>` : ''}
+                ${pkg.description ? `<p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin-bottom:18px; line-height:1.6;">${pkg.description}</p>` : ''}
+                
                 ${isUnlocked
-                ? `<button class="btn-primary w-100" onclick="watchPackage('${pkg.id}')" style="background:linear-gradient(135deg,#22c55e,#16a34a);">
-                        <i class="fas fa-play"></i> مشاهدة الباقة
+                ? `<button class="btn-primary w-100" onclick="watchPackage('${pkg.id}')" style="background:linear-gradient(135deg,#22c55e,#16a34a); box-shadow:0 4px 15px rgba(22,163,74,0.3); padding:14px; border-radius:12px; font-weight:600;">
+                            <i class="fas fa-play"></i> فتح المحتوى التعليمي
                        </button>`
-                : `<button class="btn-primary w-100" onclick="openPackageModal('${pkg.id}')">
-                        <i class="fas fa-star"></i> اشترك في الباقة
+                : `<button class="btn-primary w-100" onclick="openPackageModal('${pkg.id}')" style="padding:14px; border-radius:12px; font-weight:600; box-shadow:0 4px 15px rgba(99,102,241,0.3);">
+                            <i class="fas fa-star"></i> اشترك وفعل الآن
                        </button>`
             }
             </div>
@@ -2546,7 +2554,7 @@ function openPackageModal(pkgId) {
         </div>
         <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:4px;">
             <i class="fas fa-mobile-alt" style="color:#a5b4fc;"></i>
-            رقم فودافون كاش: <strong style="color:#fff;font-family:monospace;">01204767017</strong>
+            رقم فودافون كاش: <strong id="vodafone-cash-num" onclick="copyToClipboard('01028164601', this)" style="color:#fff;font-family:monospace;cursor:pointer;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,0.05);transition:0.3s;" title="اضغط للنسخ">01028164601</strong>
         </p>
         <p style="color:var(--text-muted);font-size:0.82rem;">حوّل المبلغ وأرسل صورة الإيصال عبر واتساب لاستلام الكود</p>
     `;
@@ -2594,7 +2602,7 @@ function subscribeViaWhatsApp() {
     const text = encodeURIComponent(
         `السلام عليكم أستاذ أحمد 👋\n\nأريد الاشتراك في الباقة التالية:\n\n📦 *${pkg.name}*\n💰 السعر: ${pkg.price} ج.م\n${pkg.duration ? `⏱️ المدة: ${pkg.duration}\n` : ''}📚 المرحلة: ${appData.grades[pkg.grade]?.title || pkg.grade}\n\nسأقوم بتحويل المبلغ على فودافون كاش وإرسال صورة الإيصال.`
     );
-    window.open(`https://wa.me/201204767017?text=${text}`, '_blank');
+    window.open(`https://wa.me/201028164601?text=${text}`, '_blank');
 }
 
 function watchPackage(pkgId) {
@@ -2654,7 +2662,9 @@ function watchPackage(pkgId) {
     videos.forEach((v, i) => {
         const ytId = getYouTubeId(v.url);
         if (ytId) {
-            setTimeout(() => initYTPlayer(`pkg-${pkgId}-${i}`, ytId), 250 + i * 150);
+            const vid_key = `pkg-${pkgId}-${i}`;
+            const playerId = `pkg-player-${pkgId}-${i}`;
+            setTimeout(() => initYTPlayer(vid_key, ytId, playerId), 250 + i * 150);
         }
     });
 }
@@ -2990,4 +3000,20 @@ async function deletePackage(pkgId) {
         console.error(err);
         alert('فشل الحذف');
     }
+}
+
+function copyToClipboard(text, el) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalHtml = el.innerHTML;
+        const originalColor = el.style.color;
+        el.style.color = '#4ade80';
+        el.innerHTML = '<i class="fas fa-check"></i> تم النسخ';
+        setTimeout(() => {
+            el.style.color = originalColor;
+            el.innerHTML = originalHtml;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert('الكود للنسخ اليدوي: ' + text);
+    });
 }

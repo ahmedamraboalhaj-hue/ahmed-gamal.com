@@ -96,107 +96,119 @@
                 <button onclick="document.getElementById('student-login-modal').style.display='none'"
                     style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1;">✕</button>
             </div>
-            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">سجّل بياناتك وسيتواصل معك
+            <p id="registration-modal-subtitle"
+                style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">سجّل بياناتك وسيتواصل معك
                 الأستاذ لتفعيل اشتراكك</p>
 
-            <!-- Voucher direct activation -->
-            <div id="voucher-direct-section"
-                style="background: rgba(212, 175, 55, 0.08); border: 1px dashed rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
-                <p style="color: var(--primary-light); font-size: 0.85rem; margin-bottom: 10px; text-align: center;">
-                    <i class="fas fa-key"></i> هل لديك كود تفعيل؟ أدخله هنا للتفعيل الفوري:
-                </p>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="direct-voucher-input" placeholder="أدخل كود التفعيل"
-                        style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: #000; color: #fff; font-family: monospace; text-align: center;">
-                    <button type="button" class="btn-primary" onclick="activateGradeWithVoucher()"
-                        style="white-space: nowrap; padding: 10px 15px;">تفعيل</button>
+            <!-- Step 1: Registration Form -->
+            <div id="registration-step">
+                <!-- Grade Auto-detected Banner -->
+                <div id="grade-auto-banner"
+                    style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); border-radius: 10px; padding: 10px 15px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-graduation-cap" style="color: #818cf8;"></i>
+                    <span style="color: #c7d2fe; font-size: 0.9rem;">المرحلة الدراسية: <strong id="grade-auto-text"
+                            style="color: #a5b4fc;">سيتم تحديدها تلقائياً</strong></span>
                 </div>
+
+                <form id="student-login-form" onsubmit="handleStudentLogin(event)">
+                    <input type="hidden" id="student-grade" value="">
+
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>الاسم الأول</label>
+                            <input type="text" id="student-fname" placeholder="الاسم الأول" required>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>اسم الأب</label>
+                            <input type="text" id="student-sname" placeholder="اسم الأب" required>
+                        </div>
+                    </div>
+                    <div class="form-row"
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>اسم الجد</label>
+                            <input type="text" id="student-tname" placeholder="اسم الجد" required>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>اسم العائلة</label>
+                            <input type="text" id="student-lname" placeholder="اسم العائلة" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label>المحافظة</label>
+                        <select id="student-governorate" required>
+                            <option value="" disabled selected>اختر المحافظة</option>
+                            <option>القاهرة</option>
+                            <option>الجيزة</option>
+                            <option>الإسكندرية</option>
+                            <option>الدقهلية</option>
+                            <option>البحيرة</option>
+                            <option>الفيوم</option>
+                            <option>الغربية</option>
+                            <option>الإسماعيلية</option>
+                            <option>المنوفية</option>
+                            <option>المنيا</option>
+                            <option>القليوبية</option>
+                            <option>الوادي الجديد</option>
+                            <option>السويس</option>
+                            <option>أسوان</option>
+                            <option>أسيوط</option>
+                            <option>بني سويف</option>
+                            <option>بورسعيد</option>
+                            <option>دمياط</option>
+                            <option>الشرقية</option>
+                            <option>جنوب سيناء</option>
+                            <option>كفر الشيخ</option>
+                            <option>مطروح</option>
+                            <option>الأقصر</option>
+                            <option>قنا</option>
+                            <option>شمال سيناء</option>
+                            <option>سوهاج</option>
+                            <option>البحر الأحمر</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row"
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                        <div class="form-group" style="margin: 0;">
+                            <label>رقم هاتف الطالب</label>
+                            <input type="tel" id="student-phone" placeholder="01XXXXXXXXX" required>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label>رقم هاتف ولي الأمر</label>
+                            <input type="tel" id="student-parent-phone" placeholder="01XXXXXXXXX" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary w-100"
+                        style="margin-top: 20px; padding: 14px; font-size: 1rem;">
+                        <i class="fas fa-check-circle"></i> تأكيد التسجيل
+                    </button>
+                </form>
             </div>
 
-            <!-- Grade Auto-detected Banner -->
-            <div id="grade-auto-banner"
-                style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); border-radius: 10px; padding: 10px 15px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-graduation-cap" style="color: #818cf8;"></i>
-                <span style="color: #c7d2fe; font-size: 0.9rem;">المرحلة الدراسية: <strong id="grade-auto-text"
-                        style="color: #a5b4fc;">سيتم تحديدها تلقائياً</strong></span>
-            </div>
-
-            <form id="student-login-form" onsubmit="handleStudentLogin(event)">
-                <input type="hidden" id="student-grade" value="">
-
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div class="form-group" style="margin: 0;">
-                        <label>الاسم الأول</label>
-                        <input type="text" id="student-fname" placeholder="الاسم الأول" required>
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label>اسم الأب</label>
-                        <input type="text" id="student-sname" placeholder="اسم الأب" required>
+            <!-- Step 2: Voucher Activation -->
+            <div id="voucher-step" style="display: none;">
+                <div id="voucher-direct-section"
+                    style="background: rgba(212, 175, 55, 0.08); border: 1px dashed rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                    <p
+                        style="color: var(--primary-light); font-size: 0.85rem; margin-bottom: 12px; text-align: center;">
+                        <i class="fas fa-key"></i> مبروك! تم تسجيلك بنجاح. هل لديك كود تفعيل؟
+                    </p>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="direct-voucher-input" placeholder="أدخل كود التفعيل هنا"
+                            style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); background: #000; color: #fff; font-family: monospace; text-align: center;">
+                        <button type="button" class="btn-primary" onclick="activateGradeWithVoucher()"
+                            style="white-space: nowrap; padding: 10px 15px;">تفعيل</button>
                     </div>
                 </div>
-                <div class="form-row"
-                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
-                    <div class="form-group" style="margin: 0;">
-                        <label>اسم الجد</label>
-                        <input type="text" id="student-tname" placeholder="اسم الجد" required>
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label>اسم العائلة</label>
-                        <input type="text" id="student-lname" placeholder="اسم العائلة" required>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-top: 12px;">
-                    <label>المحافظة</label>
-                    <select id="student-governorate" required>
-                        <option value="" disabled selected>اختر المحافظة</option>
-                        <option>القاهرة</option>
-                        <option>الجيزة</option>
-                        <option>الإسكندرية</option>
-                        <option>الدقهلية</option>
-                        <option>البحيرة</option>
-                        <option>الفيوم</option>
-                        <option>الغربية</option>
-                        <option>الإسماعيلية</option>
-                        <option>المنوفية</option>
-                        <option>المنيا</option>
-                        <option>القليوبية</option>
-                        <option>الوادي الجديد</option>
-                        <option>السويس</option>
-                        <option>أسوان</option>
-                        <option>أسيوط</option>
-                        <option>بني سويف</option>
-                        <option>بورسعيد</option>
-                        <option>دمياط</option>
-                        <option>الشرقية</option>
-                        <option>جنوب سيناء</option>
-                        <option>كفر الشيخ</option>
-                        <option>مطروح</option>
-                        <option>الأقصر</option>
-                        <option>قنا</option>
-                        <option>شمال سيناء</option>
-                        <option>سوهاج</option>
-                        <option>البحر الأحمر</option>
-                    </select>
-                </div>
-
-                <div class="form-row"
-                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
-                    <div class="form-group" style="margin: 0;">
-                        <label>رقم هاتف الطالب</label>
-                        <input type="tel" id="student-phone" placeholder="01XXXXXXXXX" required>
-                    </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label>رقم هاتف ولي الأمر</label>
-                        <input type="tel" id="student-parent-phone" placeholder="01XXXXXXXXX" required>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-primary w-100"
-                    style="margin-top: 20px; padding: 14px; font-size: 1rem;">
-                    <i class="fas fa-check-circle"></i> تأكيد التسجيل
+                <button type="button" class="btn-outline w-100"
+                    onclick="document.getElementById('student-login-modal').style.display='none'"
+                    style="margin-top: 10px; padding: 12px; background: rgba(255,255,255,0.03); color: var(--text-muted); border-color: rgba(255,255,255,0.1);">
+                    إكمال للمنصة (بدون تفعيل) <i class="fas fa-arrow-left"></i>
                 </button>
-            </form>
+            </div>
         </div>
     </div>
 

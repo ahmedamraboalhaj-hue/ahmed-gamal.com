@@ -133,6 +133,19 @@ function checkStudentSession() {
     const subscribeBtn = document.getElementById('subscribe-btn');
     if (session) {
         const student = JSON.parse(session);
+        // Find latest student data to sync unlocked items
+        const latest = appData.students.find(s => s.phone === student.phone || s.id === student.id);
+        if (latest) {
+            localStorage.setItem('studentSession', JSON.stringify(latest));
+            // Sync unlocked grades
+            if (latest.unlockedGrades) {
+                latest.unlockedGrades.forEach(g => localStorage.setItem(`unlocked_${g}`, 'true'));
+            }
+            // Sync unlocked packages
+            if (latest.unlockedPackages) {
+                latest.unlockedPackages.forEach(pId => localStorage.setItem(`pkg_unlocked_${pId}`, 'true'));
+            }
+        }
         logVisit(student);
         if (subscribeBtn) subscribeBtn.style.display = 'none';
     } else {
@@ -154,6 +167,11 @@ function openSubscriptionModal() {
         gradeInput.value = '';
         if (gradeText) gradeText.textContent = 'سيتم تحديدها تلقائياً';
     }
+
+    document.getElementById('registration-step').style.display = 'block';
+    document.getElementById('voucher-step').style.display = 'none';
+    const subtitle = document.getElementById('registration-modal-subtitle');
+    if (subtitle) subtitle.textContent = 'سجّل بياناتك وسيتواصل معك الأستاذ لتفعيل اشتراكك';
 
     modal.style.display = 'flex';
 }
@@ -199,6 +217,11 @@ async function loadInitialData() {
                 const activeSection = document.querySelector('.admin-nav li.active')?.dataset.section;
                 if (currentState.isAdmin && (activeSection === 'dashboard' || activeSection === 'students-list')) {
                     renderAdminSection(activeSection);
+                }
+                // Refresh session if logged in to sync unlocked content
+                if (localStorage.getItem('studentSession')) {
+                    checkStudentSession();
+                    if (currentState.selectedGrade) renderContent();
                 }
             });
 
@@ -1906,20 +1929,33 @@ async function handleStudentLogin(event) {
     }
 
     localStorage.setItem('studentSession', JSON.stringify(student));
-    logVisit(student);
-    document.getElementById('student-login-modal').style.display = 'none';
 
-    // Hide Subscribe Button after registration
-    const subscribeBtn = document.getElementById('subscribe-btn');
-    if (subscribeBtn) subscribeBtn.style.display = 'none';
+    // Sync existing unlocks from the retrieved student profile to localStorage
+    if (student.unlockedGrades) {
+        student.unlockedGrades.forEach(g => localStorage.setItem(`unlocked_${g}`, 'true'));
+    }
+    if (student.unlockedPackages) {
+        student.unlockedPackages.forEach(p => localStorage.setItem(`pkg_unlocked_${p}`, 'true'));
+    }
+
+    logVisit(student);
 
     // Check if system is already unlocked for this grade
     const isGradeUnlocked = localStorage.getItem(`unlocked_${grade}`) === 'true';
     if (isGradeUnlocked) {
         alert(`أهلاً بك مجدداً يا ${fname} 🎉\nمنصتك مفعلة بالفعل، استمتع بالدروس!`);
+        document.getElementById('student-login-modal').style.display = 'none';
     } else {
-        alert(`أهلاً بك يا ${fname} في منصة الأستاذ أحمد جمال رضوان 🎉\nتم تسجيل بياناتك بنجاح، يمكنك التفعيل الآن بكود أو انتظار تواصل الأستاذ.`);
+        // Switch to Voucher Step
+        document.getElementById('registration-step').style.display = 'none';
+        document.getElementById('voucher-step').style.display = 'block';
+        const subtitle = document.getElementById('registration-modal-subtitle');
+        if (subtitle) subtitle.textContent = 'تم تسجيل بياناتك بنجاح! هل لديك كود تفعيل؟';
     }
+
+    // Hide Subscribe Button after registration
+    const subscribeBtn = document.getElementById('subscribe-btn');
+    if (subscribeBtn) subscribeBtn.style.display = 'none';
 
     if (currentState.selectedGrade === grade) renderContent();
 }
@@ -1945,7 +1981,16 @@ async function activateGradeWithVoucher() {
             usedAt: new Date().toISOString()
         });
 
-        // Update local state
+        // Persistent unlock: Associate with student in Firestore
+        const session = localStorage.getItem('studentSession');
+        if (session) {
+            const student = JSON.parse(session);
+            await db.collection('students').doc(student.id).update({
+                unlockedGrades: firebase.firestore.FieldValue.arrayUnion(grade)
+            });
+        }
+
+        // Update local state and current instance
         voucher.isUsed = true;
         localStorage.setItem(`unlocked_${grade}`, 'true');
 
@@ -2522,6 +2567,16 @@ async function activatePackageVoucher() {
             isUsed: true,
             usedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
+        // Persistent unlock: Associate with student in Firestore
+        const session = localStorage.getItem('studentSession');
+        if (session) {
+            const student = JSON.parse(session);
+            await db.collection('students').doc(student.id).update({
+                unlockedPackages: firebase.firestore.FieldValue.arrayUnion(currentPackageModal.id)
+            });
+        }
+
         voucher.isUsed = true;
         localStorage.setItem(`pkg_unlocked_${currentPackageModal.id}`, 'true');
         document.getElementById('package-subscribe-modal').style.display = 'none';

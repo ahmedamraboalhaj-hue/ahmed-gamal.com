@@ -93,11 +93,11 @@ const PACKAGE_IMAGES = [
 
 // YouTube Players Management
 let ytPlayers = {};
-let isYouTubeAPIReady = false;
+let isYouTubeAPIReady = (window.YT && window.YT.Player) ? true : false;
 
-function onYouTubeIframeAPIReady() {
+window.onYouTubeIframeAPIReady = function () {
     isYouTubeAPIReady = true;
-}
+};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -397,10 +397,25 @@ function renderContent() {
         }
 
         if (isGradeUnlocked && !isExamLocked) {
+            let videoHtml = '';
+            if (ytId) {
+                videoHtml = `<div id="${playerId}"></div>`;
+            } else {
+                // Check if it's a direct video file or something else
+                const isDirectVideo = lesson.url.match(/\.(mp4|webm|ogg)$/i);
+                if (isDirectVideo) {
+                    videoHtml = `<video src="${lesson.url}" controls style="width:100%; height:100%; border-radius:20px;"></video>`;
+                } else {
+                    // Fallback to iframe (Google Drive, Vimeo, etc.)
+                    videoHtml = `<iframe src="${lesson.url}" style="width:100%; height:100%; border:none; border-radius:20px;" allowfullscreen></iframe>`;
+                }
+            }
+
             lessonsList.innerHTML += `
                 <div class="item-card">
                     <div class="video-preview-wrapper" id="${wrapperId}">
-                        <div id="${playerId}"></div>
+                        ${videoHtml}
+                        ${ytId ? `
                         <div class="video-overlay-shield total-shield" onclick="togglePlayPause('${lesson.id}')" ondblclick="toggleFullscreen('${wrapperId}')">
                             <div class="play-overlay">
                                 <i class="fas fa-play"></i>
@@ -423,7 +438,7 @@ function renderContent() {
                                     <i class="fas fa-expand"></i>
                                 </button>
                             </div>
-                        </div>
+                        </div>` : ''}
                     </div>
                     <div class="item-info">
                         <h4>${lesson.title}</h4>
@@ -431,8 +446,10 @@ function renderContent() {
                     </div>
                 </div>
             `;
-            // Initialize player after element is in DOM
-            setTimeout(() => initYTPlayer(lesson.id, ytId), 100);
+            // Initialize player after element is in DOM (only for YouTube)
+            if (ytId) {
+                setTimeout(() => initYTPlayer(lesson.id, ytId), 150);
+            }
         } else {
             // Show locked view
             lessonsList.innerHTML += `
@@ -502,9 +519,10 @@ function renderContent() {
 }
 
 function getYouTubeId(url) {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    if (!url) return null;
+    const regExp = /^.*(?:youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/|live\/)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : 'dQw4w9WgXcQ';
+    return (match && match[1] && match[1].length === 11) ? match[1] : null;
 }
 
 let currentExamData = null;
@@ -1995,38 +2013,52 @@ function openIntroVideo() {
 
 function initYTPlayer(id, videoId, elementId = null) {
     if (!isYouTubeAPIReady) {
-        setTimeout(() => initYTPlayer(id, videoId, elementId), 500);
-        return;
+        // Double check if YT is actually ready but the flag was missed
+        if (window.YT && window.YT.Player) {
+            isYouTubeAPIReady = true;
+        } else {
+            setTimeout(() => initYTPlayer(id, videoId, elementId), 500);
+            return;
+        }
     }
 
     const targetId = elementId || `player-${id}`;
+    const targetEl = document.getElementById(targetId);
+    if (!targetEl) return; // Prevent errors if element is gone
 
     // Clean up old player if exists
     if (ytPlayers[id]) {
-        try { ytPlayers[id].destroy(); } catch (e) { }
+        try {
+            if (ytPlayers[id].destroy) ytPlayers[id].destroy();
+        } catch (e) { console.error("Error destroying player:", e); }
     }
 
-    ytPlayers[id] = new YT.Player(targetId, {
-        height: '100%',
-        width: '100%',
-        videoId: videoId,
-        playerVars: {
-            'autoplay': 0,
-            'controls': 1,
-            'modestbranding': 1,
-            'rel': 0,
-            'showinfo': 0,
-            'iv_load_policy': 3,
-            'disablekb': 1,
-            'fs': 0,
-            'enablejsapi': 1,
-            'origin': window.location.protocol === 'file:' ? '*' : window.location.origin
-        },
-
-        events: {
-            'onStateChange': (event) => onPlayerStateChange(event, id)
-        }
-    });
+    try {
+        ytPlayers[id] = new YT.Player(targetId, {
+            height: '100%',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                'autoplay': 0,
+                'controls': 1,
+                'modestbranding': 1,
+                'rel': 0,
+                'showinfo': 0,
+                'iv_load_policy': 3,
+                'disablekb': 1,
+                'fs': 0,
+                'enablejsapi': 1,
+                'playsinline': 1,
+                'origin': window.location.origin || '*'
+            },
+            events: {
+                'onStateChange': (event) => onPlayerStateChange(event, id),
+                'onError': (e) => console.error("YouTube Player Error for " + id, e)
+            }
+        });
+    } catch (err) {
+        console.error("Critical error initializing YouTube player:", err);
+    }
 }
 
 function onPlayerStateChange(event, id) {
@@ -2538,7 +2570,12 @@ function watchPackage(pkgId) {
         return `
                     <div class="item-card" style="margin:0;">
                         <div class="video-preview-wrapper" id="${wrapperId}">
-                            <div id="${playerId}"></div>
+                            ${ytId ? `<div id="${playerId}"></div>` : (
+                v.url.match(/\.(mp4|webm|ogg)$/i)
+                    ? `<video src="${v.url}" controls style="width:100%; height:100%; border-radius:20px;"></video>`
+                    : `<iframe src="${v.url}" style="width:100%; height:100%; border:none; border-radius:20px;" allowfullscreen></iframe>`
+            )}
+                            ${ytId ? `
                             <div class="video-overlay-shield total-shield" onclick="togglePlayPause('${vid_key}')" ondblclick="toggleFullscreen('${wrapperId}')">
                                 <div class="play-overlay"><i class="fas fa-play"></i></div>
                                 <div class="shield-top"></div><div class="shield-center-top"></div>
@@ -2551,7 +2588,7 @@ function watchPackage(pkgId) {
                                     <button class="custom-seek-btn" onclick="event.stopPropagation();seek('${vid_key}',10)"><i class="fas fa-redo"></i></button>
                                     <button class="custom-fs-btn" onclick="event.stopPropagation();toggleFullscreen('${wrapperId}')"><i class="fas fa-expand"></i></button>
                                 </div>
-                            </div>
+                            </div>` : ''}
                         </div>
                         <div class="item-info"><h4>${v.title}</h4></div>
                     </div>`;
@@ -2560,7 +2597,10 @@ function watchPackage(pkgId) {
         </div>`;
     document.body.appendChild(modal);
     videos.forEach((v, i) => {
-        setTimeout(() => initYTPlayer(`pkg-${pkgId}-${i}`, getYouTubeId(v.url)), 200 + i * 150);
+        const ytId = getYouTubeId(v.url);
+        if (ytId) {
+            setTimeout(() => initYTPlayer(`pkg-${pkgId}-${i}`, ytId), 250 + i * 150);
+        }
     });
 }
 

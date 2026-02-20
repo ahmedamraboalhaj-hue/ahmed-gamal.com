@@ -82,8 +82,14 @@ let appData = {
 let currentState = {
     selectedGrade: null,
     selectedBranch: 'الكل',
-    isAdmin: false
+    isAdmin: false,
+    editingPackageId: null
 };
+
+const PACKAGE_IMAGES = [
+    { id: 'full_term', name: 'ترم كامل', url: 'full_term.jpg' },
+    { id: 'month_2', name: 'شهر 2', url: 'month_2.jpg' }
+];
 
 // YouTube Players Management
 let ytPlayers = {};
@@ -2366,21 +2372,44 @@ function renderPackages() {
     container.innerHTML = filtered.map(pkg => {
         const isUnlocked = localStorage.getItem(`pkg_unlocked_${pkg.id}`) === 'true';
         const videos = pkg.videos || [];
-        const thumbsHtml = videos.slice(0, 4).map(v => {
-            const ytId = getYouTubeId(v.url);
-            return `<div style="position:relative;overflow:hidden;border-radius:8px;aspect-ratio:16/9;background:#111;">
-                <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="${v.title}"
-                     style="width:100%;height:100%;object-fit:cover;${isUnlocked ? '' : 'filter:brightness(0.5);'}">
-                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                    <i class="fas fa-${isUnlocked ? 'play-circle' : 'lock'}" style="color:rgba(255,255,255,0.8);font-size:1.4rem;"></i>
-                </div>
-                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:5px 8px;">
-                    <p style="color:#fff;font-size:0.7rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.title}</p>
-                </div>
-            </div>`;
-        }).join('');
 
-        const extraCount = videos.length > 4 ? videos.length - 4 : 0;
+        // Use package image if available, else use video thumbnails
+        let topVisualHtml = '';
+        if (pkg.imageUrl) {
+            topVisualHtml = `
+                <div style="position:relative; width:100%; aspect-ratio:16/9; overflow:hidden;">
+                    <img src="${pkg.imageUrl}" alt="${pkg.name}" 
+                         style="width:100%; height:100%; object-fit:cover; display:block; border-radius:16px 16px 0 0;">
+                    ${!isUnlocked ? `
+                        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-lock" style="color:#fff; font-size:2rem; text-shadow:0 0 10px rgba(0,0,0,0.5);"></i>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            const thumbsHtml = videos.slice(0, 4).map(v => {
+                const ytId = getYouTubeId(v.url);
+                return `<div style="position:relative;overflow:hidden;border-radius:8px;aspect-ratio:16/9;background:#111;">
+                    <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="${v.title}"
+                         style="width:100%;height:100%;object-fit:cover;${isUnlocked ? '' : 'filter:brightness(0.5);'}">
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-${isUnlocked ? 'play-circle' : 'lock'}" style="color:rgba(255,255,255,0.8);font-size:1.4rem;"></i>
+                    </div>
+                    <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:5px 8px;">
+                        <p style="color:#fff;font-size:0.7rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.title}</p>
+                    </div>
+                </div>`;
+            }).join('');
+
+            topVisualHtml = `
+                <div style="padding:14px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    ${thumbsHtml}
+                </div>
+            `;
+        }
+
+        const extraCount = videos.length > (pkg.imageUrl ? 0 : 4) ? videos.length - (pkg.imageUrl ? 0 : 4) : 0;
 
         return `
         <div class="package-card glass" style="border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);transition:transform 0.3s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform='translateY(0)'">
@@ -2396,12 +2425,10 @@ function renderPackages() {
                         ${pkg.duration ? `<div style="font-size:0.72rem;color:rgba(255,255,255,0.75);">${pkg.duration}</div>` : ''}
                        </div>`
             }
-            </div>
-            <div style="padding:14px;">
+            ${topVisualHtml}
+            <div style="padding:14px; ${pkg.imageUrl ? 'padding-top:0;' : ''}">
                 <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:10px;"><i class="fas fa-film"></i> ${videos.length} فيديو في الباقة</p>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                    ${thumbsHtml}
-                </div>
+
                 ${extraCount > 0 ? `<p style="color:var(--text-muted);font-size:0.8rem;text-align:center;margin-bottom:8px;">+ ${extraCount} فيديو آخر</p>` : ''}
                 ${pkg.description ? `<p style="color:var(--text-muted);font-size:0.83rem;margin-bottom:12px;">${pkg.description}</p>` : ''}
                 ${isUnlocked
@@ -2540,7 +2567,7 @@ function watchPackage(pkgId) {
 // ---- Admin: Add Package Section ----
 function renderAddPackageSection(main) {
     main.innerHTML = `
-        <h3>إضافة باقة جديدة 📦</h3>
+        <h3>${currentState.editingPackageId ? 'تعديل باقة' : 'إضافة باقة جديدة'} 📦</h3>
         <div class="admin-form-container">
             <div class="form-group">
                 <label>اسم الباقة</label>
@@ -2572,6 +2599,28 @@ function renderAddPackageSection(main) {
             </div>
         </div>
 
+        <div style="margin-top:20px; padding:15px; background:rgba(212,175,55,0.05); border-radius:12px; border:1px dashed var(--primary-color);">
+            <h4 style="margin-bottom:12px; color:var(--primary-light);"><i class="fas fa-image"></i> اختر صورة عرض الباقة (اختياري)</h4>
+            <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:10px;">
+                ${PACKAGE_IMAGES.map(img => `
+                    <label style="cursor:pointer; flex: 0 0 150px; text-align:center;">
+                        <input type="radio" name="pkg-image" value="${img.url}" style="display:none;" onchange="updatePackageImagePreview(this.value)">
+                        <div class="pkg-img-option" data-url="${img.url}" style="border:2px solid transparent; border-radius:8px; overflow:hidden; transition:0.3s; height:85px;">
+                            <img src="${img.url}" style="width:100%; height:100%; object-fit:cover;">
+                        </div>
+                        <span style="font-size:0.85rem; margin-top:5px; display:block;">${img.name}</span>
+                    </label>
+                `).join('')}
+                <label style="cursor:pointer; flex: 0 0 150px; text-align:center;">
+                    <input type="radio" name="pkg-image" value="" style="display:none;" onchange="updatePackageImagePreview('')" checked>
+                    <div class="pkg-img-option" style="border:2px solid var(--primary-color); border-radius:8px; display:flex; align-items:center; justify-content:center; height:85px; background:rgba(0,0,0,0.4);">
+                        <i class="fas fa-video-slash"></i>
+                    </div>
+                    <span style="font-size:0.85rem; margin-top:5px; display:block;">بدون صورة (عرض الفيديوهات)</span>
+                </label>
+            </div>
+        </div>
+
         <div style="margin-top:20px;">
             <h4 style="margin-bottom:12px;"><i class="fas fa-film"></i> فيديوهات الباقة</h4>
             <div id="pkg-video-rows"></div>
@@ -2580,9 +2629,16 @@ function renderAddPackageSection(main) {
             </button>
         </div>
 
-        <button class="btn-primary" onclick="saveNewPackage()" style="margin-top:24px;">
-            <i class="fas fa-save"></i> حفظ الباقة
-        </button>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-primary" onclick="saveNewPackage()" style="margin-top:24px; flex:1;">
+                <i class="fas fa-save"></i> ${currentState.editingPackageId ? 'حفظ التعديلات' : 'حفظ الباقة'}
+            </button>
+            ${currentState.editingPackageId ? `
+                <button class="btn-secondary" onclick="cancelPkgEdit()" style="margin-top:24px;">
+                    إلغاء
+                </button>
+            ` : ''}
+        </div>
 
         <hr style="margin:40px 0;border:1px solid var(--glass-border);">
         <h3>الباقات المضافة</h3>
@@ -2605,6 +2661,9 @@ function renderAddPackageSection(main) {
                                 </p>
                             </div>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn-primary" style="background:#8b5cf6;padding:6px 14px;font-size:0.85rem;" onclick="editPackage('${pkg.id}')">
+                                    <i class="fas fa-edit"></i> تعديل
+                                </button>
                                 <button class="btn-primary" style="background:#6366f1;padding:6px 14px;font-size:0.85rem;" onclick="generatePackageVouchers('${pkg.id}','${pkg.name.replace(/'/g, "\\'")}')">
                                     <i class="fas fa-key"></i> توليد أكواد
                                 </button>
@@ -2621,6 +2680,10 @@ function renderAddPackageSection(main) {
         </div>
     `;
     if (document.getElementById('pkg-video-rows').children.length === 0) addPkgVideoRow();
+
+    // Initialize
+    updateAdminBranches('pkg');
+    updatePackageImagePreview('');
 }
 
 let pkgVideoRowCount = 0;
@@ -2643,6 +2706,8 @@ async function saveNewPackage() {
     const price = document.getElementById('pkg-price').value;
     const duration = document.getElementById('pkg-duration').value.trim();
     const grade = document.getElementById('pkg-grade').value;
+    const imageUrl = document.querySelector('input[name="pkg-image"]:checked')?.value || null;
+
     if (!name || !price) return alert('برجاء إدخال اسم الباقة والسعر');
 
     const rows = document.querySelectorAll('.pkg-vid-title');
@@ -2653,20 +2718,102 @@ async function saveNewPackage() {
         const url = urlRows[i].value.trim();
         if (title && url) videos.push({ title, url });
     });
+
     if (videos.length === 0) return alert('برجاء إضافة فيديو واحد على الأقل');
 
     try {
-        await db.collection('packages').add({
-            name, description: desc, price: Number(price), duration, grade, videos,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        alert(`✅ تم حفظ باقة "${name}" بنجاح!`);
+        const pkgData = {
+            name, description: desc, price: Number(price),
+            duration, grade, videos, imageUrl,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (currentState.editingPackageId) {
+            await db.collection('packages').doc(currentState.editingPackageId).update(pkgData);
+            alert(`✅ تم تحديث باقة "${name}" بنجاح!`);
+            currentState.editingPackageId = null;
+        } else {
+            pkgData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('packages').add(pkgData);
+            alert(`✅ تم حفظ باقة "${name}" بنجاح!`);
+        }
+
         pkgVideoRowCount = 0;
         renderAdminSection('add-package');
     } catch (err) {
         console.error(err);
         alert('فشل الحفظ، تأكد من اتصالك بالإنترنت');
     }
+}
+
+function editPackage(pkgId) {
+    const pkg = appData.packages.find(p => p.id === pkgId);
+    if (!pkg) return;
+
+    currentState.editingPackageId = pkgId;
+    renderAdminSection('add-package');
+
+    // Populate fields
+    document.getElementById('pkg-name').value = pkg.name;
+    document.getElementById('pkg-desc').value = pkg.description || '';
+    document.getElementById('pkg-price').value = pkg.price;
+    document.getElementById('pkg-duration').value = pkg.duration || '';
+    document.getElementById('pkg-grade').value = pkg.grade;
+
+    // Populate image choice
+    const radios = document.querySelectorAll('input[name="pkg-image"]');
+    radios.forEach(r => {
+        if (r.value === (pkg.imageUrl || '')) {
+            r.checked = true;
+            updatePackageImagePreview(r.value);
+        }
+    });
+
+    // Populate videos
+    const container = document.getElementById('pkg-video-rows');
+    container.innerHTML = '';
+    pkgVideoRowCount = 0;
+    if (pkg.videos && pkg.videos.length) {
+        pkg.videos.forEach(v => {
+            pkgVideoRowCount++;
+            const row = document.createElement('div');
+            row.style.cssText = 'display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:10px;align-items:center;';
+            row.innerHTML = `
+                <input type="text" class="pkg-vid-title" value="${v.title}" placeholder="اسم الفيديو" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
+                <input type="text" class="pkg-vid-url" value="${v.url}" placeholder="رابط يوتيوب" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
+                <button onclick="this.parentElement.remove()" style="background:#ef4444;border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;"><i class="fas fa-times"></i></button>
+            `;
+            container.appendChild(row);
+        });
+    } else {
+        addPkgVideoRow();
+    }
+
+    // Scroll to form
+    document.getElementById('admin-content-area').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelPkgEdit() {
+    currentState.editingPackageId = null;
+    renderAdminSection('add-package');
+}
+
+function updatePackageImagePreview(val) {
+    const options = document.querySelectorAll('.pkg-img-option');
+    options.forEach(opt => {
+        const url = opt.dataset.url || '';
+        if (url === val) {
+            opt.style.borderColor = 'var(--primary-light)';
+            opt.style.boxShadow = '0 0 10px var(--primary-color)';
+        } else {
+            opt.style.borderColor = 'transparent';
+            opt.style.boxShadow = 'none';
+            // Default "no image" option logic
+            if (!url && !val) {
+                opt.style.borderColor = 'var(--primary-light)';
+            }
+        }
+    });
 }
 
 async function generatePackageVouchers(pkgId, pkgName) {

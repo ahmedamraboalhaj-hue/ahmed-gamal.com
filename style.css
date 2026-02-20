@@ -2395,6 +2395,17 @@ select:focus {
     width: 100%;
 }
 
+.pkg-img-option {
+    background: #000;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.pkg-img-option:hover {
+    transform: scale(1.05);
+    border-color: var(--primary-color) !important;
+}
+
 @media (max-width: 600px) {
     .packages-grid {
         grid-template-columns: 1fr;

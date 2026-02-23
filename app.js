@@ -159,7 +159,7 @@ function checkStudentSession() {
     }
 }
 
-function openSubscriptionModal() {
+function openSubscriptionModal(mandatory = false) {
     const modal = document.getElementById('student-login-modal');
     const gradeInput = document.getElementById('student-grade');
     const gradeText = document.getElementById('grade-auto-text');
@@ -177,14 +177,40 @@ function openSubscriptionModal() {
     document.getElementById('registration-step').style.display = 'block';
     document.getElementById('voucher-step').style.display = 'none';
     const subtitle = document.getElementById('registration-modal-subtitle');
-    if (subtitle) subtitle.textContent = 'سجّل بياناتك وسيتواصل معك الأستاذ لتفعيل اشتراكك';
+    if (subtitle) subtitle.textContent = 'سجّل بياناتك لتتمكن من الوصول للمحتوى التعليمي';
+
+    // Control close button visibility based on mandatory flag
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    if (closeBtn) closeBtn.style.display = mandatory ? 'none' : 'flex';
+
+    // Store mandatory state
+    modal.dataset.mandatory = mandatory ? 'true' : 'false';
 
     modal.style.display = 'flex';
 }
 
+function closeLoginModalIfAllowed() {
+    const modal = document.getElementById('student-login-modal');
+    if (!modal) return;
+    // If mandatory (student must register), don't allow closing
+    if (modal.dataset.mandatory === 'true') {
+        // Shake animation to indicate can't close
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.style.animation = 'none';
+            content.offsetHeight; // reflow
+            content.style.animation = 'shake 0.4s ease';
+            setTimeout(() => content.style.animation = '', 500);
+        }
+        return;
+    }
+    modal.style.display = 'none';
+}
+
+
 async function loadInitialData() {
     try {
-        // Real-time listeners for all main collections
+
         db.collection('lessons').orderBy('createdAt', 'desc')
             .onSnapshot(snapshot => {
                 appData.lessons = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -281,7 +307,14 @@ function initEventListeners() {
         }
     };
     closeBtn.onclick = () => modal.style.display = 'none';
-    window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; };
+    window.onclick = (e) => {
+        if (e.target == modal) modal.style.display = 'none';
+        // Prevent closing mandatory student login modal by clicking outside
+        const loginModal = document.getElementById('student-login-modal');
+        if (loginModal && e.target == loginModal && loginModal.dataset.mandatory !== 'true') {
+            loginModal.style.display = 'none';
+        }
+    };
 
     document.getElementById('login-confirm').onclick = checkLogin;
 
@@ -338,9 +371,9 @@ function selectGrade(gradeId) {
         subscribeBtn.style.display = session ? 'none' : 'block';
     }
 
-    // Proactive Registration Prompt for new students
+    // Mandatory Registration: must register before viewing content
     if (!session) {
-        openSubscriptionModal();
+        openSubscriptionModal(true); // true = mandatory (no close)
     }
 
     renderBranchSelection();
@@ -2621,9 +2654,43 @@ async function activatePackageVoucher() {
     if (!code) return alert('برجاء إدخال كود الباقة');
     if (!currentPackageModal) return;
 
-    const voucher = appData.packageVouchers.find(v => v.code === code && v.packageId === currentPackageModal.id);
-    if (!voucher) return alert('كود غير صحيح أو غير مخصص لهذه الباقة');
-    if (voucher.isUsed) return alert('هذا الكود تم استخدامه من قبل');
+    // --- SMART VOUCHER LOOKUP ---
+    // 1. Search in packageVouchers (specific package vouchers)
+    let voucher = appData.packageVouchers.find(v => v.code === code && v.packageId === currentPackageModal.id);
+    let voucherCollection = 'packageVouchers';
+
+    // 2. If not found, search in packageVouchers without packageId filter (any package code)
+    if (!voucher) {
+        voucher = appData.packageVouchers.find(v => v.code === code);
+        if (voucher) voucherCollection = 'packageVouchers';
+    }
+
+    // 3. If still not found, search in general vouchers collection
+    if (!voucher) {
+        // Try Firebase direct query for the code
+        try {
+            const snap = await db.collection('packageVouchers').where('code', '==', code).limit(1).get();
+            if (!snap.empty) {
+                voucher = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                voucherCollection = 'packageVouchers';
+            }
+        } catch (e) { console.error('Error querying packageVouchers:', e); }
+    }
+
+    // 4. Last resort: search in regular vouchers
+    if (!voucher) {
+        try {
+            const snap = await db.collection('vouchers').where('code', '==', code).limit(1).get();
+            if (!snap.empty) {
+                voucher = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                voucherCollection = 'vouchers';
+            }
+        } catch (e) { console.error('Error querying vouchers:', e); }
+    }
+
+    if (!voucher) return alert('❌ الكود غير صحيح. برجاء التأكد من الكود وإعادة المحاولة.');
+    if (voucher.isUsed) return alert('⚠️ هذا الكود تم استخدامه من قبل');
+    if (voucher.isActive === false) return alert('⚠️ هذا الكود مغلق من الإدارة، برجاء التواصل مع الأستاذ');
 
     if (activateBtn) {
         activateBtn.classList.add('loading');
@@ -2637,8 +2704,8 @@ async function activatePackageVoucher() {
         }
         const student = JSON.parse(session);
 
-        // 1. Mark voucher as used in Firebase
-        await db.collection('packageVouchers').doc(voucher.id).update({
+        // 1. Mark voucher as used in Firebase (in the correct collection)
+        await db.collection(voucherCollection).doc(voucher.id).update({
             isUsed: true,
             usedAt: firebase.firestore.FieldValue.serverTimestamp(),
             usedBy: student.phone,

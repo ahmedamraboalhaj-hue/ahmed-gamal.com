@@ -5,7 +5,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: #020204;
+    background: #ffffff;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -22,8 +22,8 @@
     width: 100%;
     height: 100%;
     background-image:
-        radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 10%),
-        radial-gradient(circle at 80% 70%, rgba(212, 175, 55, 0.1) 0%, transparent 10%);
+        radial-gradient(circle at 20% 30%, rgba(0, 129, 255, 0.05) 0%, transparent 20%),
+        radial-gradient(circle at 80% 70%, rgba(0, 129, 255, 0.03) 0%, transparent 20%);
     filter: blur(20px);
     z-index: 1;
 }
@@ -36,14 +36,14 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: white;
+    color: #1a1a1a;
 }
 
 /* AI Visuals */
 .ai-visual-container {
     position: relative;
-    width: 150px;
-    height: 150px;
+    width: 140px;
+    height: 140px;
     margin-bottom: 40px;
     display: flex;
     justify-content: center;
@@ -53,37 +53,36 @@
 .orbital-ring {
     position: absolute;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(0, 129, 255, 0.1);
 }
 
 .ring-1 {
     width: 100%;
     height: 100%;
-    border-top-color: #6366f1;
-    border-bottom-color: #6366f1;
+    border-top-color: #0081ff;
+    border-bottom-color: #0081ff;
     animation: spin 3s linear infinite;
 }
 
 .ring-2 {
     width: 75%;
     height: 75%;
-    border-left-color: #d4af37;
-    border-right-color: #d4af37;
+    border-left-color: #4dabff;
+    border-right-color: #4dabff;
     animation: spin 4s linear infinite reverse;
 }
 
 .ring-3 {
     width: 50%;
     height: 50%;
-    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border: 1px dashed rgba(0, 129, 255, 0.2);
     animation: spin 6s linear infinite;
 }
 
 .core-glow {
     font-size: 3rem;
-    color: white;
-    text-shadow: 0 0 20px #6366f1, 0 0 40px #6366f1;
+    color: #0081ff;
+    text-shadow: 0 0 20px rgba(0, 129, 255, 0.2);
     animation: pulse-core 2s ease-in-out infinite;
     z-index: 2;
 }
@@ -94,48 +93,44 @@
     left: 0;
     width: 100%;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #6366f1, transparent);
+    background: linear-gradient(90deg, transparent, #0081ff, transparent);
     animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    opacity: 0.5;
+    opacity: 0.3;
 }
 
 /* Typography */
 .splash-title {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     line-height: 1.2;
 }
 
 .splash-title .prefix {
     display: block;
-    font-size: 1.2rem;
-    color: #a0a0a0;
-    font-weight: 300;
-    letter-spacing: 2px;
-    margin-bottom: 5px;
+    font-size: 1.1rem;
+    color: #64748b;
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
     opacity: 0;
     animation: fade-up 0.8s ease-out 0.5s forwards;
 }
 
 .splash-title .name {
     display: block;
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     font-weight: 900;
-    background: linear-gradient(135deg, #fff 0%, #d4af37 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #1a1a1a;
     opacity: 0;
     animation: fade-up 0.8s ease-out 0.8s forwards;
-    text-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
 }
 
 .splash-subtitle {
-    font-size: 1rem;
-    color: #6366f1;
+    font-size: 1.1rem;
+    color: #0081ff;
+    font-weight: 600;
     margin-bottom: 50px;
     opacity: 0;
     animation: fade-up 0.8s ease-out 1.1s forwards;
-    letter-spacing: 1px;
 }
 
 /* Loading Bar */
@@ -160,13 +155,11 @@
     position: absolute;
     top: 0;
     left: 0;
-    /* RTL context might need right, but let's check direction. HTML is dir="rtl" */
     height: 100%;
-    background: linear-gradient(90deg, #6366f1, #d4af37);
+    background: linear-gradient(90deg, #0081ff, #4dabff);
     width: 0%;
     border-radius: 4px;
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
-    /* Animation handled by JS for smoothness or CSS here */
+    box-shadow: 0 0 15px rgba(0, 129, 255, 0.3);
     animation: load-progress 3.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 

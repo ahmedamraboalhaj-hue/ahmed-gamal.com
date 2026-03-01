@@ -2477,7 +2477,7 @@ async function resetFullSystem() {
     const confirmation = confirm("⚠️ تحذير نهائي: هل أنت متأكد من حذف كافة البيانات (دروس، طلاب، اختبارات، أكواد، إلخ)؟ لا يمكن التراجع عن هذه الخطوة!");
     if (!confirmation) return;
 
-
+ 
     const secondConfirmation = prompt("لتأكيد الحذف، اكتب كلمة 'تصفير' في المربع أدناه:");
     if (secondConfirmation !== 'تصفير') {
         alert("إجراء ملغي: الكلمة غير صحيحة");

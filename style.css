@@ -14,6 +14,93 @@
     --shadow-sm: 0 2px 8px rgba(0, 129, 255, 0.05);
     --shadow-md: 0 4px 20px rgba(0, 129, 255, 0.08);
     --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.05), 0 0 20px rgba(0, 129, 255, 0.05);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --nav-bg: rgba(255, 255, 255, 0.85);
+    --input-bg: rgba(0, 0, 0, 0.03);
+    --table-row-hover: rgba(0, 129, 255, 0.04);
+}
+
+/* ---------------- Dark Mode (الوضع الليلي) ---------------- */
+[data-theme="dark"] {
+    --primary-color: #0081ff;
+    --primary-light: #4dabff;
+    --primary-dark: #66b8ff;
+    --secondary-color: #11151c;
+    --dark-bg: #0a0e16;
+    --card-bg: #131825;
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --text-primary: #f1f5f9;
+    --text-muted: #94a3b8;
+    --gradient-1: linear-gradient(135deg, #0081ff 0%, #00bcff 100%);
+    --gradient-2: linear-gradient(135deg, #f1f5f9 0%, #0081ff 100%);
+    --glow-color: rgba(0, 129, 255, 0.18);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 20px rgba(0, 129, 255, 0.1);
+    --glass-bg: rgba(19, 24, 37, 0.65);
+    --nav-bg: rgba(10, 14, 22, 0.85);
+    --input-bg: rgba(255, 255, 255, 0.05);
+    --table-row-hover: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] img:not(.no-dark-dim) {
+    filter: brightness(0.92);
+}
+
+html {
+    transition: background-color 0.35s ease;
+}
+
+body,
+.glass,
+#main-nav,
+.modal-content,
+input,
+select,
+textarea {
+    transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+}
+
+/* Theme Toggle Bar */
+#theme-toggle-bar {
+    position: fixed;
+    top: 64px;
+    right: 0;
+    left: 0;
+    z-index: 998;
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+    background: var(--nav-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--glass-border);
+    transition: top 0.2s ease, background-color 0.35s ease, border-color 0.35s ease;
+}
+
+#theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    padding: 6px 18px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#theme-toggle-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+#theme-toggle-btn i {
+    font-size: 0.95rem;
+    color: var(--primary-color);
 }
 
 * {
@@ -30,6 +117,7 @@ body {
     line-height: 1.6;
     overflow-x: hidden;
     scroll-behavior: smooth;
+    scroll-padding-top: 115px;
     text-align: right;
     width: 100%;
     position: relative;
@@ -72,11 +160,11 @@ body {
 
 /* Background Effects */
 .glass {
-    background: rgba(255, 255, 255, 0.7);
+    background: var(--glass-bg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 129, 255, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(0, 129, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-md);
 }
 
 .bg-glow {
@@ -364,7 +452,7 @@ body {
 }
 
 .btn-outline-nav {
-    background: white;
+    background: var(--card-bg);
     color: var(--primary-color);
     border: 1.5px solid var(--primary-color);
     padding: 10px 24px;
@@ -385,7 +473,7 @@ body {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     color: var(--text-primary);
     border: 1px solid var(--glass-border);
     padding: 10px 25px;
@@ -450,12 +538,12 @@ body {
     left: 0;
     width: 100%;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--nav-bg);
     backdrop-filter: blur(15px);
-    border-bottom: 1px solid rgba(0, 129, 255, 0.1);
+    border-bottom: 1px solid var(--glass-border);
     padding: 12px 0;
     transition: 0.3s;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+    box-shadow: var(--shadow-sm);
 }
 
 .nav-links a {
@@ -545,7 +633,7 @@ body {
     transform: translate(-50%, -50%);
     width: 380px;
     height: 380px;
-    background: white;
+    background: var(--card-bg);
     border-radius: 50%;
     padding: 12px;
     box-shadow: 0 20px 60px rgba(0, 129, 255, 0.15);
@@ -627,14 +715,14 @@ body {
 }
 
 .grade-card {
-    background: white;
-    border: 1px solid rgba(0, 129, 255, 0.08);
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
     padding: 35px 25px;
     border-radius: 20px;
     text-align: center;
     transition: 0.3s ease;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    box-shadow: var(--shadow-sm);
 }
 
 .grade-card:hover {
@@ -665,7 +753,7 @@ body {
 .grade-card h3 {
     font-size: 1.4rem;
     margin-bottom: 10px;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .grade-card p {
@@ -742,7 +830,7 @@ body {
 
 .branch-tab-btn {
     padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 10px;
     color: var(--text-muted);
@@ -777,12 +865,12 @@ body {
 
 /* Items & Cards (Course List Style) */
 .item-card {
-    background: white;
-    border: 1px solid rgba(0, 129, 255, 0.08);
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
     border-radius: 20px;
     overflow: hidden;
     transition: 0.3s;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
 }
@@ -802,7 +890,7 @@ body {
     font-size: 1.3rem;
     font-weight: 800;
     margin-bottom: 8px;
-    color: #1a1a1a;
+    color: var(--text-primary);
 }
 
 .card-meta {
@@ -1050,7 +1138,7 @@ body {
 .admin-mobile-header {
     display: none;
     padding: 10px 15px;
-    background: #020204;
+    background: var(--card-bg);
     border-bottom: 1px solid var(--glass-border);
     justify-content: space-between;
     align-items: center;
@@ -1061,7 +1149,7 @@ body {
 .admin-menu-toggle {
     background: transparent;
     border: none;
-    color: white;
+    color: var(--text-primary);
     font-size: 1.5rem;
     cursor: pointer;
 }
@@ -1076,13 +1164,13 @@ body {
 
 .admin-sidebar {
     width: 280px;
-    background: rgba(15, 23, 42, 0.95);
+    background: var(--card-bg);
     border-left: 1px solid var(--glass-border);
     padding: 40px 20px;
     display: flex;
     flex-direction: column;
     backdrop-filter: blur(15px);
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-lg);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 3001;
     overflow-y: auto;
@@ -1235,15 +1323,16 @@ body {
 select {
     width: 100%;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
-    color: white;
+    color: var(--text-primary);
     margin-top: 5px;
 }
 
 select option {
-    background: #1e293b;
+    background: var(--card-bg);
+    color: var(--text-primary);
 }
 
 /* Exam Management Styles */
@@ -1264,19 +1353,19 @@ select option {
 
 .options-grid input {
     padding: 10px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
-    color: white;
+    color: var(--text-primary);
 }
 
 textarea.q-text {
     width: 100%;
     height: 80px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
-    color: white;
+    color: var(--text-primary);
     padding: 10px;
     resize: none;
 }
@@ -1299,11 +1388,12 @@ textarea.q-text {
 .exam-container {
     width: 100%;
     max-width: 800px;
-    background: #1e293b;
+    background: var(--card-bg);
     padding: 40px;
     border-radius: 24px;
     border: 1px solid var(--glass-border);
     height: fit-content;
+    color: var(--text-primary);
 }
 
 .exam-header {
@@ -1341,7 +1431,7 @@ textarea.q-text {
     display: flex;
     align-items: center;
     gap: 15px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     padding: 15px 20px;
     border-radius: 12px;
     cursor: pointer;
@@ -1356,11 +1446,6 @@ textarea.q-text {
 
 .exam-opt input {
     cursor: pointer;
-}
-
-.glass {
-    backdrop-filter: blur(10px);
-    background: rgba(30, 41, 59, 0.5);
 }
 
 /* Hidden Utility */
@@ -1384,13 +1469,14 @@ textarea.q-text {
 }
 
 .modal-content {
-    background: #1e293b;
+    background: var(--card-bg);
     padding: 40px;
     border-radius: 20px;
     width: 90%;
     max-width: 400px;
     position: relative;
     border: 1px solid var(--glass-border);
+    color: var(--text-primary);
 }
 
 .close-modal {
@@ -1421,17 +1507,17 @@ textarea.q-text {
 .form-group input {
     width: 100%;
     padding: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 8px;
-    color: white;
+    color: var(--text-primary);
 }
 
 /* Footer */
 footer {
-    background: #f8fbff;
+    background: var(--dark-bg);
     padding: 80px 0 30px;
-    border-top: 1px solid rgba(0, 129, 255, 0.08);
+    border-top: 1px solid var(--glass-border);
 }
 
 .footer-grid {
@@ -1448,7 +1534,7 @@ footer {
 }
 
 .footer h3 {
-    color: #1a1a1a;
+    color: var(--text-primary);
     font-size: 1.3rem;
     margin-bottom: 25px;
     font-weight: 800;
@@ -1480,8 +1566,8 @@ footer {
 .social-icons a {
     width: 45px;
     height: 45px;
-    background: white;
-    border: 1px solid rgba(0, 129, 255, 0.1);
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
     color: var(--primary-color);
     border-radius: 50%;
     display: flex;
@@ -1748,10 +1834,10 @@ footer {
 textarea {
     width: 100%;
     height: 150px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 12px;
-    color: white;
+    color: var(--text-primary);
     padding: 15px;
     resize: none;
     font-family: inherit;
@@ -1870,7 +1956,7 @@ select:focus {
 .image-frame {
     position: relative;
     padding: 15px;
-    background: white;
+    background: var(--card-bg);
     border-radius: 30px;
     box-shadow: 0 20px 50px rgba(0, 129, 255, 0.1);
     border: 1px solid rgba(0, 129, 255, 0.08);
@@ -2259,16 +2345,17 @@ select:focus {
 .vouchers-table-container th {
     position: sticky;
     top: 0;
-    background: #1e293b;
+    background: var(--card-bg);
+    color: var(--text-primary);
     padding: 15px;
     z-index: 5;
 }
 
 .voucher-note-input {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: 5px;
-    color: white;
+    color: var(--text-primary);
     padding: 5px 10px;
     width: 100%;
     min-width: 150px;

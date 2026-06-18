@@ -89,6 +89,14 @@
         </div>
     </nav>
 
+    <!-- Theme Toggle Bar (Dark / Light) -->
+    <div id="theme-toggle-bar">
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="تبديل الوضع الليلي/الصباحي">
+            <i class="fas fa-moon" id="theme-toggle-icon"></i>
+            <span id="theme-toggle-label">الوضع الليلي</span>
+        </button>
+    </div>
+
     <!-- Student Registration Modal -->
     <div id="student-login-modal" class="modal" style="display: none; z-index: 5000;">
         <div class="modal-content glass" style="max-width: 520px; width: 95%; position: relative;">
@@ -382,49 +390,8 @@
                     <h2>اختر مرحلتك التعليمية</h2>
                     <p>نقدم محتوى متخصص لكل مرحلة دراسية لضمان أقصى استفادة</p>
                 </div>
-                <div class="grades-grid">
-                    <div class="grade-card" onclick="selectGrade('1mid')">
-                        <div class="grade-icon"><i class="fas fa-book-open"></i></div>
-                        <h3>الصف الأول الإعدادي</h3>
-                        <p>تأسيس قوي في الرياضيات</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
-                    <div class="grade-card" onclick="selectGrade('2mid')">
-                        <div class="grade-icon"><i class="fas fa-divide"></i></div>
-                        <h3>الصف الثاني الإعدادي</h3>
-                        <p>تكملة رحلة التفوق</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
-                    <div class="grade-card" onclick="selectGrade('3mid')">
-                        <div class="grade-icon"><i class="fas fa-school"></i></div>
-                        <h3>الصف الثالث الإعدادي</h3>
-                        <p>تأسيس متين للثانوية العامة</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
-                    <div class="grade-card" onclick="selectGrade('1sec')">
-                        <div class="grade-icon"><i class="fas fa-1"></i></div>
-                        <h3>الصف الأول الثانوي</h3>
-                        <p>بناء المفاهيم المتقدمة</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
-                    <div class="grade-card" onclick="selectGrade('2sec')">
-                        <div class="grade-icon"><i class="fas fa-2"></i></div>
-                        <h3>الصف الثاني الثانوي</h3>
-                        <p>تعميق المهارات الرياضية</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
-                    <div class="grade-card" onclick="selectGrade('3sec-sci')">
-                        <div class="grade-icon"><i class="fas fa-microscope"></i></div>
-                        <h3>الصف الثالث الثانوي (علمي)</h3>
-                        <p>تخصص العلوم والرياضيات</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
-                    <div class="grade-card" onclick="selectGrade('3sec-lit')">
-                        <div class="grade-icon"><i class="fas fa-book"></i></div>
-                        <h3>الصف الثالث الثانوي (أدبي)</h3>
-                        <p>تخصص الشريعة والأدب</p>
-                        <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
-                    </div>
+                <div class="grades-grid" id="grades-grid-container">
+                    <!-- يتم بناء كروت المراحل التعليمية ديناميكياً من app.js (دعم صورة مخصصة لكل مرحلة) -->
                 </div>
             </div>
         </section>
@@ -652,6 +619,7 @@
                     <li class="active" data-section="dashboard"><i class="fas fa-chart-line"></i> الإحصائيات العامة</li>
                     <li data-section="add-lesson"><i class="fas fa-video"></i> إضافة درس فيديو</li>
                     <li data-section="add-package"><i class="fas fa-box-open"></i> إضافة باقة</li>
+                    <li data-section="manage-grades"><i class="fas fa-layer-group"></i> إدارة المراحل التعليمية</li>
                     <li data-section="add-exam"><i class="fas fa-file-alt"></i> إضافة اختبار</li>
                     <li data-section="add-file"><i class="fas fa-file-pdf"></i> إضافة مذكرة/ملف</li>
                     <li data-section="vouchers"><i class="fas fa-key"></i> أكواد التفعيل</li>
@@ -663,6 +631,10 @@
                     <li data-section="reset-system" style="color: #ef4444;"><i class="fas fa-trash-alt"></i> تصفير
                         النظام (بدء العمل الرسمي)</li>
                 </ul>
+                <button class="btn-secondary" onclick="toggleTheme()" style="margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fas fa-moon" id="admin-theme-toggle-icon"></i>
+                    <span id="admin-theme-toggle-label">الوضع الليلي</span>
+                </button>
                 <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> خروج</button>
             </div>
             <div class="admin-main">

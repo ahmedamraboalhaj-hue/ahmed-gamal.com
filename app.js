@@ -16,41 +16,136 @@ const db = firebase.firestore();
 
 const MATH_BRANCHES = ['الكل', 'الجبر', 'الإحصاء', 'حساب المثلثات', 'الهندسة', 'التفاضل والتكامل', 'الاستاتيكا', 'الديناميكا', 'تطبيقية', 'متجهات', 'جبر وإحتمالات', 'تأسيس'];
 
+// --- Cloudinary Configuration (Unsigned Upload) ---
+const CLOUDINARY_CLOUD_NAME = 'dwrhl6gjf';
+const CLOUDINARY_UPLOAD_PRESET = 'asr-kareem';
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+/**
+ * يرفع ملف صورة إلى Cloudinary ويرجع رابط الصورة النهائي (secure_url).
+ * يستخدم في: صور الباقات، صور المراحل التعليمية، صور الدروس، صور الأسئلة.
+ * @param {File} file - ملف الصورة المختار من input[type=file]
+ * @returns {Promise<string|null>} رابط الصورة على Cloudinary أو null عند الفشل
+ */
+async function uploadToCloudinary(file) {
+    if (!file) return null;
+    if (!file.type.startsWith('image/')) {
+        alert('برجاء اختيار ملف صورة فقط');
+        return null;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+        const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        if (data.secure_url) {
+            return data.secure_url;
+        } else {
+            console.error('Cloudinary upload error:', data);
+            alert('فشل رفع الصورة، برجاء المحاولة مرة أخرى');
+            return null;
+        }
+    } catch (error) {
+        console.error('Cloudinary upload exception:', error);
+        alert('حدث خطأ في الاتصال أثناء رفع الصورة');
+        return null;
+    }
+}
+
+/**
+ * دالة مساعدة عامة: تربط input[type=file] برفع تلقائي على Cloudinary،
+ * وتعرض حالة تحميل + معاينة الصورة بعد الرفع داخل عنصر معاينة محدد.
+ * @param {HTMLInputElement} inputEl - عنصر input الذي تغيّر
+ * @param {string} previewElId - id لعنصر المعاينة (سيتم وضع <img> بداخله)
+ * @param {Function} onUploaded - callback يستقبل الرابط النهائي بعد الرفع
+ */
+async function handleImageInputUpload(inputEl, previewElId, onUploaded) {
+    const file = inputEl.files && inputEl.files[0];
+    if (!file) return;
+    const preview = document.getElementById(previewElId);
+    if (preview) {
+        preview.innerHTML = `<div style="padding:10px; color:var(--text-muted); font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> جاري رفع الصورة...</div>`;
+    }
+    const url = await uploadToCloudinary(file);
+    if (url) {
+        if (preview) {
+            preview.innerHTML = `
+                <div style="position:relative; display:inline-block;">
+                    <img src="${url}" style="max-width:200px; max-height:140px; border-radius:8px; border:1px solid var(--glass-border); display:block;">
+                    <button type="button" class="btn-primary" style="position:absolute; top:5px; right:5px; background:#ef4444; padding:3px 8px; font-size:0.7rem; border-radius:6px;" onclick="this.closest('div[style*=relative]').parentElement.dataset.uploadedUrl=''; this.closest('div[style*=relative]').remove();">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            preview.dataset.uploadedUrl = url;
+        }
+        if (typeof onUploaded === 'function') onUploaded(url);
+    } else if (preview) {
+        preview.innerHTML = '';
+    }
+}
+
 // Initial Data Structure
 let appData = {
     grades: {
         '1mid': {
             title: 'الصف الأول الإعدادي',
+            desc: 'تأسيس قوي في الرياضيات',
+            icon: 'fa-book-open',
+            imageUrl: null,
             groups: ['مجموعة 1'],
             branches: ['الكل', 'جبر', 'هندسة']
         },
         '2mid': {
             title: 'الصف الثاني الإعدادي',
+            desc: 'تكملة رحلة التفوق',
+            icon: 'fa-divide',
+            imageUrl: null,
             groups: ['مجموعة 1'],
             branches: ['الكل', 'جبر', 'هندسة']
         },
         '3mid': {
             title: 'الصف الثالث الإعدادي',
+            desc: 'تأسيس متين للثانوية العامة',
+            icon: 'fa-school',
+            imageUrl: null,
             groups: ['مجموعة 1', 'مجموعة 2'],
             branches: ['الكل', 'جبر وإحتمالات', 'هندسة']
         },
         '1sec': {
             title: 'الصف الأول الثانوي',
+            desc: 'بناء المفاهيم المتقدمة',
+            icon: 'fa-1',
+            imageUrl: null,
             groups: ['مجموعة 1', 'مجموعة 2'],
             branches: ['الكل', 'الجبر', 'الهندسة', 'حساب المثلثات', 'متجهات']
         },
         '2sec': {
             title: 'الصف الثاني الثانوي',
+            desc: 'تعميق المهارات الرياضية',
+            icon: 'fa-2',
+            imageUrl: null,
             groups: ['مجموعة 1', 'مجموعة 2'],
             branches: ['الكل', 'الجبر', 'التفاضل والتكامل', 'حساب المثلثات', 'تطبيقية']
         },
         '3sec-sci': {
             title: 'الصف الثالث الثانوي (علمي)',
+            desc: 'تخصص العلوم والرياضيات',
+            icon: 'fa-microscope',
+            imageUrl: null,
             groups: ['مجموعة 1', 'مجموعة 2'],
             branches: ['الكل', 'تطبيقية', 'الجبر', 'التفاضل والتكامل', 'حساب المثلثات']
         },
         '3sec-lit': {
             title: 'الصف الثالث الثانوي (أدبي)',
+            desc: 'تخصص الشريعة والأدب',
+            icon: 'fa-book',
+            imageUrl: null,
             groups: ['مجموعة 1'],
             branches: ['الكل', 'الجبر', 'التفاضل والتكامل']
         }
@@ -83,7 +178,8 @@ let currentState = {
     selectedGrade: null,
     selectedBranch: 'الكل',
     isAdmin: false,
-    editingPackageId: null
+    editingPackageId: null,
+    editingExamId: null
 };
 
 const PACKAGE_IMAGES = [
@@ -110,10 +206,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 500);
     }, 1500);
 
+    initTheme();
     await loadInitialData();
     initEventListeners();
     initScrollReveal();
 });
+
+// ==== THEME (Dark / Light Mode) ====
+function initTheme() {
+    const savedTheme = localStorage.getItem('siteTheme') || 'light';
+    applyTheme(savedTheme, false);
+
+    window.addEventListener('resize', adjustThemeBarPosition);
+    window.addEventListener('load', adjustThemeBarPosition);
+    adjustThemeBarPosition();
+}
+
+function applyTheme(theme, animate = true) {
+    const root = document.documentElement;
+    const icon = document.getElementById('theme-toggle-icon');
+    const label = document.getElementById('theme-toggle-label');
+    const adminIcon = document.getElementById('admin-theme-toggle-icon');
+    const adminLabel = document.getElementById('admin-theme-toggle-label');
+
+    if (theme === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+        if (icon) icon.className = 'fas fa-sun';
+        if (label) label.textContent = 'الوضع الصباحي';
+        if (adminIcon) adminIcon.className = 'fas fa-sun';
+        if (adminLabel) adminLabel.textContent = 'الوضع الصباحي';
+    } else {
+        root.removeAttribute('data-theme');
+        if (icon) icon.className = 'fas fa-moon';
+        if (label) label.textContent = 'الوضع الليلي';
+        if (adminIcon) adminIcon.className = 'fas fa-moon';
+        if (adminLabel) adminLabel.textContent = 'الوضع الليلي';
+    }
+    localStorage.setItem('siteTheme', theme);
+    setTimeout(adjustThemeBarPosition, animate ? 50 : 0);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+function adjustThemeBarPosition() {
+    const nav = document.getElementById('main-nav');
+    const bar = document.getElementById('theme-toggle-bar');
+    if (!nav || !bar) return;
+    const navHeight = nav.offsetHeight || 64;
+    bar.style.top = navHeight + 'px';
+
+    // Keep native anchor links (<a href="#section">) aligned below the fixed nav + theme bar too
+    document.documentElement.style.scrollPaddingTop = (navHeight + bar.offsetHeight + 10) + 'px';
+
+    // The hero section already has a fixed padding-top sized for #main-nav alone.
+    // We only need to push it down by the theme bar's own height (added on top of the original padding).
+    const home = document.getElementById('home');
+    if (home) {
+        if (!home.dataset.basePaddingTop) {
+            const computed = window.getComputedStyle(home).paddingTop;
+            home.dataset.basePaddingTop = parseFloat(computed) || 160;
+        }
+        const basePadding = parseFloat(home.dataset.basePaddingTop);
+        home.style.paddingTop = (basePadding + bar.offsetHeight) + 'px';
+    }
+}
 
 function initScrollReveal() {
     const observerOptions = {
@@ -287,6 +446,20 @@ async function loadInitialData() {
                 }
             });
 
+        db.collection('settings').doc('gradesImages')
+            .onSnapshot(doc => {
+                if (doc.exists()) {
+                    const imagesMap = doc.data() || {};
+                    Object.keys(imagesMap).forEach(gradeId => {
+                        if (appData.grades[gradeId]) {
+                            appData.grades[gradeId].imageUrl = imagesMap[gradeId] || null;
+                        }
+                    });
+                }
+                renderGradesGrid();
+            });
+
+        renderGradesGrid();
         updateBrandingUI();
     } catch (error) {
         console.error("Error loading data from Firebase:", error);
@@ -355,6 +528,24 @@ function initEventListeners() {
             };
         });
     }
+}
+
+function renderGradesGrid() {
+    const container = document.getElementById('grades-grid-container');
+    if (!container) return;
+    container.innerHTML = Object.entries(appData.grades).map(([gradeId, grade]) => `
+        <div class="grade-card" onclick="selectGrade('${gradeId}')">
+            ${grade.imageUrl
+            ? `<div class="grade-icon" style="overflow:hidden; padding:0; width:100%; height:120px; border-radius:14px;">
+                    <img src="${grade.imageUrl}" alt="${grade.title}" style="width:100%; height:100%; object-fit:cover; display:block;">
+                </div>`
+            : `<div class="grade-icon"><i class="fas ${grade.icon || 'fa-graduation-cap'}"></i></div>`
+        }
+            <h3>${grade.title}</h3>
+            <p>${grade.desc || ''}</p>
+            <button class="btn-card">دخول <i class="fas fa-arrow-left"></i></button>
+        </div>
+    `).join('');
 }
 
 function selectGrade(gradeId) {
@@ -449,13 +640,19 @@ function renderContent() {
             const studentSession = localStorage.getItem('studentSession');
             if (studentSession) {
                 const student = JSON.parse(studentSession);
-                const bestResult = appData.results
-                    .filter(r => r.examId === lesson.requiredExamId && r.studentPhone === student.phone)
-                    .sort((a, b) => b.score - a.score)[0];
+                const studentResults = appData.results
+                    .filter(r => r.examId === lesson.requiredExamId && r.studentPhone === student.phone);
+                const bestResult = studentResults.sort((a, b) => (b.percentage ?? b.score) - (a.percentage ?? a.score))[0];
 
-                if (!bestResult || bestResult.score < lesson.minScore) {
+                const requiredExam = appData.exams.find(e => e.id === lesson.requiredExamId);
+                const passedByPercent = bestResult && bestResult.percentage !== undefined
+                    ? bestResult.isPassed
+                    : (bestResult && bestResult.score >= (lesson.minScore || 0));
+
+                if (!bestResult || !passedByPercent) {
                     isExamLocked = true;
-                    lockReason = `يجب اجتياز ${appData.exams.find(e => e.id === lesson.requiredExamId)?.title || 'الاختبار'} بدرجة ${lesson.minScore} على الأقل لفتح هذا الدرس`;
+                    const reqLabel = lesson.minScore ? `بدرجة ${lesson.minScore} على الأقل` : `بنسبة ${requiredExam?.minPassPercent || 50}% على الأقل`;
+                    lockReason = `يجب اجتياز ${requiredExam?.title || 'الاختبار'} ${reqLabel} لفتح هذا الدرس`;
                 }
             } else {
                 isExamLocked = true;
@@ -518,17 +715,18 @@ function renderContent() {
                 setTimeout(() => initYTPlayer(lesson.id, ytId), 150);
             }
         } else {
-            // Show locked view
+            // Show locked view (image stays fully visible, only a small lock badge overlays it)
+            const lessonThumb = lesson.imageUrl || thumbUrl;
             lessonsList.innerHTML += `
                 <div class="item-card locked-card" style="position: relative; cursor: default;">
                     <div class="video-preview-wrapper" style="position: relative; overflow: hidden; min-height: 200px; background: #0a0a0a;">
-                        <img src="${thumbUrl}" alt="${lesson.title}" 
-                             style="width: 100%; height: 100%; object-fit: cover; display: block; filter: brightness(0.45);">
-                        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px; text-align: center;">
-                            <div style="background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-lock" style="font-size: 1.4rem; color: var(--primary-light);"></i>
-                            </div>
-                            <p style="color: #fff; font-size: 0.9rem; font-weight: 600; margin: 0;">${isExamLocked ? lockReason : 'اشترك لمشاهدة الدرس'}</p>
+                        <img src="${lessonThumb}" alt="${lesson.title}" 
+                             style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                        <div style="position: absolute; top:12px; left:12px; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-lock" style="font-size: 1rem; color: #fff;"></i>
+                        </div>
+                        <div style="position: absolute; left:0; right:0; bottom:0; background:linear-gradient(transparent, rgba(0,0,0,0.75)); padding:14px; text-align:center;">
+                            <p style="color: #fff; font-size: 0.9rem; font-weight: 600; margin: 0 0 8px;">${isExamLocked ? lockReason : 'اشترك لمشاهدة الدرس'}</p>
                             ${isExamLocked && lesson.requiredExamId ? `
                                 <button class="btn-primary" style="font-size: 0.8rem; padding: 8px 15px;" onclick="startExam('${lesson.requiredExamId}')">
                                     <i class="fas fa-file-alt"></i> اذهب للاختبار الآن
@@ -551,16 +749,22 @@ function renderContent() {
     });
 
     // Exams
+    const takenExamsMap = JSON.parse(localStorage.getItem('takenExams') || '{}');
     const filteredExams = appData.exams.filter(branchFilter);
     examsList.innerHTML = filteredExams.length ? '' : '<p class="empty-msg">لا يوجد اختبارات مضافة في هذا الفرع حالياً</p>';
     filteredExams.forEach(exam => {
+        const taken = takenExamsMap[exam.id];
         examsList.innerHTML += `
             <div class="item-card exam-card">
                 <div class="item-icon"><i class="fas fa-file-signature"></i></div>
                 <div class="item-info">
                     <h4>${exam.title}</h4>
-                    <p>${exam.questions.length} سؤال</p>
-                    <button class="btn-primary w-100" onclick="startExam('${exam.id}')">بدأ الاختبار</button>
+                    <p>${exam.questions.length} سؤال • ${exam.duration || 15} دقيقة</p>
+                    ${taken ? `
+                        <div style="background: ${taken.isPassed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'}; color: ${taken.isPassed ? '#4ade80' : '#f87171'}; padding: 8px; border-radius: 8px; text-align:center; font-size:0.85rem; font-weight:bold;">
+                            ${taken.isPassed ? 'تم الاجتياز ✅' : 'لم يتم الاجتياز ❌'} — ${taken.score}/${taken.total}${taken.percentage !== undefined ? ` (${taken.percentage}%)` : ''}
+                        </div>
+                    ` : `<button class="btn-primary w-100" onclick="startExam('${exam.id}')">بدأ الاختبار</button>`}
                 </div>
             </div>
         `;
@@ -616,7 +820,7 @@ function startExam(id) {
     modal.className = 'exam-overlay';
     modal.innerHTML = `
         <div class="exam-container glass" style="max-width: 950px; width: 95%; height: 95vh; display: flex; flex-direction: column;">
-            <div class="exam-header" style="flex-shrink: 0; padding: 15px 25px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3);">
+            <div class="exam-header" style="flex-shrink: 0; padding: 15px 25px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: var(--input-bg);">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <h3 style="margin: 0; color: var(--primary-light); font-size: 1.3rem;"><i class="fas fa-file-signature"></i> ${exam.title}</h3>
                     <div id="exam-timer" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; padding: 6px 15px; border-radius: 8px; font-weight: bold; font-family: monospace; font-size: 1.1rem; min-width: 100px; text-align: center;">
@@ -628,18 +832,20 @@ function startExam(id) {
                 </div>
                 <span class="close-exam" onclick="closeExam()" style="cursor: pointer; font-size: 1.5rem; color: var(--text-muted);">&times;</span>
             </div>
+
+            <div id="exam-question-grid" style="flex-shrink:0; display:flex; gap:6px; flex-wrap:wrap; padding:12px 25px; border-bottom:1px solid var(--glass-border); background: rgba(0,0,0,0.15);"></div>
             
             <div style="flex-grow: 1; overflow-y: auto; padding: 25px; scrollbar-width: thin;">
-                ${exam.imageUrl ? `
+                ${exam.sheetImageUrl ? `
                     <div style="margin-bottom: 30px; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--glass-border); background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-                        <img src="${exam.imageUrl}" alt="Exam Sheet" style="width: 100%; height: auto; display: block;">
+                        <img src="${exam.sheetImageUrl}" alt="Exam Sheet" style="width: 100%; height: auto; display: block;">
                     </div>
                 ` : ''}
                 
                 <div id="exam-questions-list"></div>
             </div>
 
-            <div class="exam-footer" style="flex-shrink: 0; padding: 20px; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+            <div class="exam-footer" style="flex-shrink: 0; padding: 20px; border-top: 1px solid var(--glass-border); background: var(--input-bg); display: flex; align-items: center; justify-content: space-between; gap: 20px;">
                 <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;"><i class="fas fa-info-circle"></i> تنبيه: سيتم الإغلاق تلقائياً عند انتهاء الوقت</p>
                 <button class="btn-primary" style="padding: 12px 40px; font-size: 1.1rem; min-width: 250px;" onclick="submitExam()">إنهاء الاختبار</button>
             </div>
@@ -647,6 +853,7 @@ function startExam(id) {
     `;
     document.body.appendChild(modal);
     renderExamQuestions();
+    renderExamQuestionGrid();
 
     // Timer Logic
     let timeLeft = (exam.duration || 15) * 60;
@@ -673,6 +880,17 @@ function startExam(id) {
     });
 }
 
+function renderExamQuestionGrid() {
+    const grid = document.getElementById('exam-question-grid');
+    if (!grid || !currentExamData) return;
+    grid.innerHTML = currentExamData.questions.map((q, idx) => `
+        <div id="grid-q-${idx}" onclick="document.getElementById('exam-q-row-${idx}')?.scrollIntoView({behavior:'smooth', block:'center'});"
+             style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:8px; border:1.5px solid var(--glass-border); cursor:pointer; font-size:0.85rem; font-weight:bold; ${userAnswers[idx] !== null ? 'background:var(--primary-color); color:#000; border-color:var(--primary-color);' : ''}">
+            ${idx + 1}
+        </div>
+    `).join('');
+}
+
 function handleExamCheat() {
     if (document.getElementById('exam-taking-modal')) {
         alert('🚨 تحذير: لقد حاولت الخروج من صفحة الاختبار! تم إنهاء الاختبار تلقائياً لحفظ نزاهة التقييم.');
@@ -685,8 +903,8 @@ function renderExamQuestions() {
     if (!list) return;
     list.innerHTML = '';
 
-    if (currentExamData.imageUrl) {
-        // Choice grid for image exams
+    if (currentExamData.sheetImageUrl) {
+        // Choice grid for image-sheet exams
         const grid = document.createElement('div');
         grid.style.display = 'grid';
         grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(180px, 1fr))';
@@ -694,7 +912,7 @@ function renderExamQuestions() {
 
         currentExamData.questions.forEach((q, idx) => {
             grid.innerHTML += `
-                <div class="exam-q-block" style="padding: 18px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; transition: 0.3s;">
+                <div class="exam-q-block" id="exam-q-row-${idx}" style="padding: 18px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; transition: 0.3s;">
                     <p style="margin-bottom: 12px; font-weight: bold; color: var(--primary-light); display: flex; justify-content: space-between;">
                         <span>سؤال ${idx + 1}</span>
                         <span id="q-status-${idx}" style="font-size: 0.7rem; color: #6366f1; opacity: 0;"><i class="fas fa-check"></i> تم الاختيار</span>
@@ -702,7 +920,7 @@ function renderExamQuestions() {
                     <div style="display: flex; gap: 8px;">
                         ${[1, 2, 3, 4].map(num => `
                             <label style="flex: 1; text-align: center; cursor: pointer; padding: 10px 5px; border: 1.5px solid var(--glass-border); border-radius: 8px; transition: 0.3s; font-weight: bold;" id="label-q${idx}-opt${num}">
-                                <input type="radio" name="q${idx}" value="${num}" style="display:none;" onchange="handleAnswerChange(${idx}, ${num})">
+                                <input type="radio" name="q${idx}" value="${num}" style="display:none;" onchange="handleAnswerChange(${idx}, ${num - 1})">
                                 ${num}
                             </label>
                         `).join('')}
@@ -712,15 +930,21 @@ function renderExamQuestions() {
         });
         list.appendChild(grid);
     } else {
-        // Original text-based
+        // Interactive questions: mcq / tf, optionally with per-question image
         currentExamData.questions.forEach((q, idx) => {
+            const isTf = q.type === 'tf';
+            const opts = isTf ? ['صح', 'خطأ'] : q.opts;
             list.innerHTML += `
-                <div class="exam-q-block glass" style="margin-bottom: 25px; padding: 25px; border-radius: 15px; border: 1px solid var(--glass-border);">
-                    <p class="q-title" style="font-size: 1.15rem; margin-bottom: 20px; line-height: 1.5;">${idx + 1}. ${q.text}</p>
-                    <div class="exam-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        ${q.opts.map((opt, oIdx) => `
+                <div class="exam-q-block glass" id="exam-q-row-${idx}" style="margin-bottom: 25px; padding: 25px; border-radius: 15px; border: 1px solid var(--glass-border);">
+                    <p class="q-title" style="font-size: 1.15rem; margin-bottom: 15px; line-height: 1.5; display:flex; justify-content:space-between; gap:10px;">
+                        <span>${idx + 1}. ${q.text}</span>
+                        <span style="font-size:0.8rem; color: var(--text-muted); white-space:nowrap;">${q.points || 1} درجة</span>
+                    </p>
+                    ${q.imageUrl ? `<div style="margin-bottom:18px;"><img src="${q.imageUrl}" style="max-width:100%; border-radius:10px; border:1px solid var(--glass-border);"></div>` : ''}
+                    <div class="exam-options" style="display: grid; grid-template-columns: ${isTf ? '1fr 1fr' : '1fr 1fr'}; gap: 12px;">
+                        ${opts.map((opt, oIdx) => `
                             <label id="label-q${idx}-opt${oIdx + 1}" style="display: flex; align-items: center; gap: 12px; padding: 15px; background: rgba(255,255,255,0.03); border: 1.5px solid var(--glass-border); border-radius: 10px; cursor: pointer; transition: 0.3s;">
-                                <input type="radio" name="q${idx}" value="${oIdx + 1}" onchange="handleAnswerChange(${idx}, ${oIdx + 1})" style="accent-color: var(--primary-color);">
+                                <input type="radio" name="q${idx}" value="${oIdx}" onchange="handleAnswerChange(${idx}, ${oIdx})" style="accent-color: var(--primary-color);">
                                 <span style="font-size: 1rem;">${opt}</span>
                             </label>
                         `).join('')}
@@ -731,19 +955,20 @@ function renderExamQuestions() {
     }
 }
 
-function handleAnswerChange(qIdx, optNum) {
-    userAnswers[qIdx] = optNum;
+function handleAnswerChange(qIdx, optIdx) {
+    userAnswers[qIdx] = optIdx;
 
     // UI Feedback
     const status = document.getElementById(`q-status-${qIdx}`);
     if (status) status.style.opacity = '1';
 
-    // Highlight selected option
-    const max = currentExamData.imageUrl ? 4 : currentExamData.questions[qIdx].opts.length;
+    // Highlight selected option (labels are 1-indexed in their element id, optIdx is 0-indexed)
+    const isSheet = !!currentExamData.sheetImageUrl;
+    const max = isSheet ? 4 : currentExamData.questions[qIdx].opts.length;
     for (let i = 1; i <= max; i++) {
         const label = document.getElementById(`label-q${qIdx}-opt${i}`);
         if (label) {
-            if (i === optNum) {
+            if ((i - 1) === optIdx) {
                 label.style.background = 'var(--primary-color)';
                 label.style.borderColor = 'var(--primary-color)';
                 label.style.color = '#000';
@@ -754,6 +979,13 @@ function handleAnswerChange(qIdx, optNum) {
             }
         }
     }
+
+    const gridCell = document.getElementById(`grid-q-${qIdx}`);
+    if (gridCell) {
+        gridCell.style.background = 'var(--primary-color)';
+        gridCell.style.color = '#000';
+        gridCell.style.borderColor = 'var(--primary-color)';
+    }
 }
 
 async function submitExam(isForced = false) {
@@ -762,9 +994,15 @@ async function submitExam(isForced = false) {
     }
 
     let score = 0;
+    let total = 0;
     currentExamData.questions.forEach((q, idx) => {
-        if (parseInt(q.correct) === userAnswers[idx]) score++;
+        const points = q.points || 1;
+        total += points;
+        if (parseInt(q.correct, 10) === userAnswers[idx]) score += points;
     });
+
+    const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+    const isPassed = percentage >= (currentExamData.minPassPercent || 0);
 
     const studentSession = localStorage.getItem('studentSession');
     const student = studentSession ? JSON.parse(studentSession) : null;
@@ -777,13 +1015,17 @@ async function submitExam(isForced = false) {
         studentPhone: student ? student.phone : 'N/A',
         studentGrade: student ? student.grade : 'N/A',
         score: score,
-        total: currentExamData.questions.length,
-        isPassed: score >= (currentExamData.minPassScore || 0),
+        total: total,
+        percentage: percentage,
+        isPassed: isPassed,
+        answers: userAnswers,
         createdAt: new Date().toISOString()
     };
 
     try {
-        await db.collection('results').add(resultData);
+        const docRef = await db.collection('results').add(resultData);
+        resultData.id = docRef.id;
+        appData.results.push(resultData);
     } catch (e) {
         console.error("Error saving result:", e);
     }
@@ -792,13 +1034,59 @@ async function submitExam(isForced = false) {
     const takenExams = JSON.parse(localStorage.getItem('takenExams') || '{}');
     takenExams[currentExamData.id] = {
         score: score,
-        total: currentExamData.questions.length,
+        total: total,
+        percentage: percentage,
+        isPassed: isPassed,
         time: new Date().toISOString()
     };
     localStorage.setItem('takenExams', JSON.stringify(takenExams));
 
-    alert(`انتهى الاختبار! 🎉\n درجتك هي: ${score} من ${currentExamData.questions.length}`);
+    const examQuestionsSnapshot = currentExamData.questions;
+    const answersSnapshot = userAnswers.slice();
     closeExam();
+    showExamReview(resultData, examQuestionsSnapshot, answersSnapshot);
+}
+
+function showExamReview(result, questions, answers) {
+    const modal = document.createElement('div');
+    modal.id = 'exam-review-modal';
+    modal.className = 'exam-overlay';
+    modal.innerHTML = `
+        <div class="exam-container glass" style="max-width: 800px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="exam-header" style="flex-shrink:0; padding: 20px 25px; border-bottom: 1px solid var(--glass-border); text-align:center; background: var(--input-bg);">
+                <div style="font-size: 3rem; margin-bottom: 10px;">${result.isPassed ? '🎉' : '📝'}</div>
+                <h3 style="margin:0 0 5px; color: var(--primary-light);">${result.isPassed ? 'تهانينا، لقد نجحت!' : 'حاول مرة أخرى في المرة القادمة'}</h3>
+                <p style="margin:0; color: var(--text-muted);">درجتك: <strong style="color:var(--text-primary);">${result.score} / ${result.total}</strong> (${result.percentage}%)</p>
+            </div>
+            <div style="flex-grow:1; overflow-y:auto; padding: 25px;">
+                ${questions.map((q, idx) => {
+        const isTf = q.type === 'tf';
+        const opts = isTf ? ['صح', 'خطأ'] : q.opts;
+        const userAns = answers[idx];
+        const correctAns = parseInt(q.correct, 10);
+        const wasCorrect = userAns === correctAns;
+        return `
+                        <div class="exam-q-block glass" style="margin-bottom:18px; padding:18px; border-radius:12px; border: 1.5px solid ${wasCorrect ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'};">
+                            <p style="font-weight:bold; margin-bottom:12px;">${idx + 1}. ${q.text} <span style="font-size:0.8rem; color:var(--text-muted);">(${q.points || 1} درجة)</span></p>
+                            ${q.imageUrl ? `<img src="${q.imageUrl}" style="max-width:100%; border-radius:8px; margin-bottom:12px;">` : ''}
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                ${opts.map((opt, oIdx) => {
+            let style = 'padding:10px; border-radius:8px; border:1px solid var(--glass-border); font-size:0.9rem;';
+            if (oIdx === correctAns) style += 'background:rgba(34,197,94,0.15); border-color:#22c55e;';
+            else if (oIdx === userAns && !wasCorrect) style += 'background:rgba(239,68,68,0.15); border-color:#ef4444;';
+            return `<div style="${style}">${opt} ${oIdx === correctAns ? '<i class="fas fa-check" style="color:#22c55e;"></i>' : (oIdx === userAns ? '<i class="fas fa-times" style="color:#ef4444;"></i>' : '')}</div>`;
+        }).join('')}
+                            </div>
+                        </div>
+                    `;
+    }).join('')}
+            </div>
+            <div style="flex-shrink:0; padding:20px; border-top:1px solid var(--glass-border); text-align:center;">
+                <button class="btn-primary" style="padding:12px 40px;" onclick="document.getElementById('exam-review-modal').remove();">إغلاق</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 function closeExam() {
@@ -811,7 +1099,17 @@ function closeExam() {
 }
 
 function scrollToSection(id) {
-    document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    const el = document.getElementById(id);
+    if (!el) return;
+    const nav = document.getElementById('main-nav');
+    const bar = document.getElementById('theme-toggle-bar');
+    const offset = (nav ? nav.offsetHeight : 0) + (bar ? bar.offsetHeight : 0) + 10;
+    const top = el.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top, behavior: 'smooth' });
+}
+
+function scrollToGrades() {
+    scrollToSection('grades');
 }
 
 function checkLogin() {
@@ -1039,6 +1337,11 @@ function renderAdminSection(section) {
                         <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
                     </select>
                 </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label><i class="fas fa-image"></i> صورة مصغرة للدرس (Thumbnail) - اختياري</label>
+                    <input type="file" id="lesson-image-input" accept="image/*" onchange="handleImageInputUpload(this, 'lesson-image-preview')">
+                    <div id="lesson-image-preview" style="margin-top:10px;" data-uploaded-url=""></div>
+                </div>
                 <div class="form-group" style="grid-column: 1 / -1; background: rgba(99, 102, 241, 0.05); padding: 15px; border-radius: 10px; border: 1px dashed #6366f1;">
                     <label style="color: #818cf8;"><i class="fas fa-lock"></i> قفل الدرس خلف اختبار (اختياري)</label>
                     <div style="display: flex; gap: 15px; margin-top: 10px;">
@@ -1061,6 +1364,7 @@ function renderAdminSection(section) {
                 <table>
                     <thead>
                         <tr>
+                            <th>الصورة</th>
                             <th>العنوان</th>
                             <th>المرحلة</th>
                             <th>الفرع</th>
@@ -1070,6 +1374,7 @@ function renderAdminSection(section) {
                     <tbody>
                         ${appData.lessons.slice().reverse().map(l => `
                             <tr>
+                                <td>${l.imageUrl ? `<img src="${l.imageUrl}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;">` : '<span style="color:var(--text-muted);font-size:0.8rem;">—</span>'}</td>
                                 <td>${l.title}</td>
                                 <td>${appData.grades[l.grade]?.title || l.grade}</td>
                                 <td>${l.branch}</td>
@@ -1091,18 +1396,20 @@ function renderAdminSection(section) {
             </div>
         `;
     } else if (section === 'add-exam') {
+        const editingExam = currentState.editingExamId ? appData.exams.find(e => e.id === currentState.editingExamId) : null;
         main.innerHTML = `
-            <h3>إضافة اختبار جديد 📝</h3>
+            <h3>${editingExam ? 'تعديل اختبار' : 'إضافة اختبار جديد'} 📝</h3>
+            <input type="hidden" id="exam-edit-id" value="${editingExam ? editingExam.id : ''}">
             <div class="admin-form-container glass" style="padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label>عنوان الاختبار</label>
-                        <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل">
+                        <input type="text" id="exam-title" placeholder="مثلاً: اختبار الجبر الشامل" value="${editingExam ? editingExam.title : ''}">
                     </div>
                     <div class="form-group">
                         <label>الفرع / المادة</label>
                         <select id="exam-branch">
-                            ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}">${b}</option>`).join('')}
+                            ${MATH_BRANCHES.filter(b => b !== 'الكل').map(b => `<option value="${b}" ${editingExam && editingExam.branch === b ? 'selected' : ''}>${b}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -1111,67 +1418,57 @@ function renderAdminSection(section) {
                     <div class="form-group">
                         <label>المرحلة</label>
                         <select id="exam-grade">
-                            <option value="3mid">الصف الثالث الإعدادي</option>
-                            <option value="1sec">الصف الأول الثانوي</option>
-                            <option value="2sec">الصف الثاني الثانوي</option>
-                            <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
-                            <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
+                            <option value="3mid" ${editingExam?.grade === '3mid' ? 'selected' : ''}>الصف الثالث الإعدادي</option>
+                            <option value="1sec" ${editingExam?.grade === '1sec' ? 'selected' : ''}>الصف الأول الثانوي</option>
+                            <option value="2sec" ${editingExam?.grade === '2sec' ? 'selected' : ''}>الصف الثاني الثانوي</option>
+                            <option value="3sec-sci" ${editingExam?.grade === '3sec-sci' ? 'selected' : ''}>الصف الثالث الثانوي (علمي)</option>
+                            <option value="3sec-lit" ${editingExam?.grade === '3sec-lit' ? 'selected' : ''}>الصف الثالث الثانوي (أدبي)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>درجة النجاح (لفتح الدروس)</label>
-                        <input type="number" id="exam-min-pass-score" placeholder="مثلاً: 17">
+                        <label>نسبة النجاح % (لفتح الدروس المرتبطة)</label>
+                        <input type="number" id="exam-min-pass-score" placeholder="مثلاً: 50" min="0" max="100" value="${editingExam ? (editingExam.minPassPercent ?? '') : ''}">
                     </div>
                     <div class="form-group">
                         <label>مدة الاختبار (بالدقائق)</label>
-                        <input type="number" id="exam-duration" placeholder="مثلاً: 15">
+                        <input type="number" id="exam-duration" placeholder="مثلاً: 15" value="${editingExam ? editingExam.duration : ''}">
                     </div>
                 </div>
 
                 <div style="margin-top: 25px; padding: 15px; background: rgba(212, 175, 55, 0.05); border: 1px dashed var(--primary-color); border-radius: 12px;">
-                    <h4 style="color: var(--primary-light); margin-bottom: 15px;"><i class="fas fa-image"></i> خيار: اختبار عبر صورة (مناسب للرياضيات)</h4>
+                    <h4 style="color: var(--primary-light); margin-bottom: 15px;"><i class="fas fa-image"></i> خيار: اختبار عبر صورة واحدة (مناسب للرياضيات)</h4>
                     <div class="form-group">
                         <label>رابط صورة الامتحان (من جوجل درايف أو غيره)</label>
-                        <input type="text" id="exam-image-url" placeholder="ضع رابط الصورة هنا...">
+                        <input type="text" id="exam-image-url" placeholder="ضع رابط الصورة هنا..." value="${editingExam && editingExam.sheetImageUrl ? editingExam.sheetImageUrl : ''}">
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label>عدد الأسئلة في الصورة</label>
-                        <input type="number" id="exam-image-q-count" placeholder="مثلاً: 10" oninput="renderImageAnswersGrid()">
+                        <input type="number" id="exam-image-q-count" placeholder="مثلاً: 10" value="${editingExam && editingExam.sheetImageUrl ? editingExam.questions.length : ''}" oninput="renderImageAnswersGrid()">
                     </div>
-                    <div id="image-answers-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;">
-                        <!-- Grid of correct answers for image-based exam -->
-                    </div>
+                    <div id="image-answers-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 15px;"></div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;"><i class="fas fa-info-circle"></i> هذا الخيار يستبعد الأسئلة النصية أدناه. استخدم نوعاً واحداً فقط لكل اختبار.</p>
                 </div>
 
                 <div id="traditional-questions-section" style="margin-top: 30px;">
-                    <h4 style="margin-bottom: 15px;">أو: إضافة أسئلة نصية (اختياري)</h4>
-                    <div id="questions-container">
-                        <div class="question-block glass" style="margin-bottom: 15px; padding: 15px;">
-                            <div class="form-group">
-                                <label>السؤال 1</label>
-                                <textarea class="q-text" placeholder="أدخل نص السؤال"></textarea>
-                            </div>
-                            <div class="options-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                                <input type="text" class="opt1" placeholder="الاختيار 1">
-                                <input type="text" class="opt2" placeholder="الاختيار 2">
-                                <input type="text" class="opt3" placeholder="الاختيار 3">
-                                <input type="text" class="opt4" placeholder="الاختيار 4">
-                            </div>
-                            <div class="form-group" style="margin-top: 10px;">
-                                <label>رقم الاختيار الصحيح (1-4)</label>
-                                <input type="number" class="q-correct" min="1" max="4" value="1">
-                            </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0;">أو: أسئلة تفاعلية (اختياري)</h4>
+                        <div style="display:flex; gap:10px;">
+                            <span id="exam-questions-summary" style="font-size: 0.85rem; color: var(--text-muted); align-self:center;">0 سؤال | 0 درجة</span>
                         </div>
                     </div>
+                    <div id="questions-container"></div>
                     <button class="btn-primary" style="background: #3b82f6;" onclick="addNewQuestionBlock()">
-                        <i class="fas fa-plus"></i> إضافة سؤال نصي آخر
+                        <i class="fas fa-plus"></i> إضافة سؤال جديد
                     </button>
                 </div>
             </div>
             
-            <button class="btn-primary w-100" style="padding: 15px; font-size: 1.1rem;" onclick="saveNewExam()">
-                <i class="fas fa-save"></i> حفظ الاختبار ونشره
-            </button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-primary w-100" style="padding: 15px; font-size: 1.1rem;" onclick="saveNewExam()">
+                    <i class="fas fa-save"></i> ${editingExam ? 'حفظ التعديلات' : 'حفظ الاختبار ونشره'}
+                </button>
+                ${editingExam ? `<button class="btn-primary" style="background:#64748b; padding:15px 25px;" onclick="currentState.editingExamId = null; renderAdminSection('add-exam');"><i class="fas fa-times"></i> إلغاء</button>` : ''}
+            </div>
 
             <hr style="margin: 40px 0; border: 1px solid var(--glass-border);">
             
@@ -1184,6 +1481,7 @@ function renderAdminSection(section) {
                             <th>المرحلة</th>
                             <th>الفرع</th>
                             <th>النوع</th>
+                            <th>عدد الأسئلة</th>
                             <th>إجراءات</th>
                         </tr>
                     </thead>
@@ -1193,18 +1491,58 @@ function renderAdminSection(section) {
                                 <td>${e.title}</td>
                                 <td>${appData.grades[e.grade]?.title || e.grade}</td>
                                 <td>${e.branch}</td>
-                                <td>${e.imageUrl ? 'صورة' : 'نصي'}</td>
+                                <td>${e.sheetImageUrl ? 'صورة' : 'تفاعلي'}</td>
+                                <td>${(e.questions || []).length}</td>
                                 <td>
-                                    <button class="btn-primary" style="background: #ef4444; padding: 5px 10px; font-size: 0.8rem;" onclick="deleteItem('exams', '${e.id}')">
-                                        <i class="fas fa-trash"></i> حذف
-                                    </button>
+                                    <div style="display:flex; gap:5px;">
+                                        <button class="btn-primary" style="background: #7c3aed; padding: 5px 10px; font-size: 0.8rem;" onclick="openExamResultsModal('${e.id}')">
+                                            <i class="fas fa-poll"></i> النتائج
+                                        </button>
+                                        <button class="btn-primary" style="background: #0077b6; padding: 5px 10px; font-size: 0.8rem;" onclick="currentState.editingExamId='${e.id}'; renderAdminSection('add-exam');">
+                                            <i class="fas fa-edit"></i> تعديل
+                                        </button>
+                                        <button class="btn-primary" style="background: #ef4444; padding: 5px 10px; font-size: 0.8rem;" onclick="deleteItem('exams', '${e.id}')">
+                                            <i class="fas fa-trash"></i> حذف
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             </div>
+
+            <!-- Exam Results Modal -->
+            <div id="exam-results-modal" class="exam-overlay" style="display:none;">
+                <div class="exam-container glass" style="max-width: 1000px; width: 95%; max-height: 90vh; display:flex; flex-direction:column;">
+                    <div class="exam-header" style="flex-shrink:0; padding:15px 25px; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 id="exam-results-title" style="margin:0; color: var(--primary-light);"><i class="fas fa-poll"></i> نتائج الاختبار</h3>
+                        <span onclick="document.getElementById('exam-results-modal').style.display='none';" style="cursor:pointer; font-size:1.5rem; color:var(--text-muted);">&times;</span>
+                    </div>
+                    <div style="padding:20px; overflow-y:auto;">
+                        <div class="stats-grid" id="exam-results-stats" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:20px;"></div>
+                        <div class="vouchers-table-container">
+                            <table style="width:100%;">
+                                <thead>
+                                    <tr>
+                                        <th>الطالب</th>
+                                        <th>الهاتف</th>
+                                        <th>الدرجة</th>
+                                        <th>النسبة</th>
+                                        <th>الحالة</th>
+                                        <th>الوقت</th>
+                                        <th>إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exam-results-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
+        renderExamQuestionBlocks(editingExam);
+        if (editingExam && editingExam.sheetImageUrl) renderImageAnswersGrid(editingExam);
     } else if (section === 'add-file') {
         main.innerHTML = `
             <h3>إضافة ملف أو مذكرة جديدة</h3>
@@ -1412,6 +1750,8 @@ function renderAdminSection(section) {
         main.innerHTML = `<h3>إدارة المجموعات</h3><p>يمكنك تعديل أسماء المجموعات من خلال مصفوفة appData في ملف app.js حالياً.</p>`;
     } else if (section === 'add-package') {
         renderAddPackageSection(main);
+    } else if (section === 'manage-grades') {
+        renderManageGradesSection(main);
     } else if (section === 'settings') {
         main.innerHTML = `
             <h3>إعدادات المنصة والهوية 🎨</h3>
@@ -1460,7 +1800,7 @@ function renderAdminSection(section) {
                 </div>
                 <div class="form-group" style="margin-top:15px;">
                     <label>وصف الهيرو (Hero Subtitle)</label>
-                    <textarea id="set-hero-subtitle" style="height:60px; width:100%; education-background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:8px; color:#fff; padding:10px;">${appData.settings.heroSubtitle}</textarea>
+                    <textarea id="set-hero-subtitle" style="height:60px; width:100%; background:var(--input-bg); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-primary); padding:10px;">${appData.settings.heroSubtitle}</textarea>
                 </div>
                 
                 <button class="btn-primary w-100" style="margin-top:25px; padding:15px;" onclick="saveBrandingSettings()">
@@ -1636,34 +1976,132 @@ function printStudentResults() {
     win.print();
 }
 
-let questionCount = 1;
-function addNewQuestionBlock() {
-    questionCount++;
+// ==== EXAM QUESTIONS BUILDER (Interactive) ====
+function renderExamQuestionBlocks(editingExam) {
     const container = document.getElementById('questions-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (editingExam && editingExam.questions && editingExam.questions.length && !editingExam.sheetImageUrl) {
+        editingExam.questions.forEach(q => addNewQuestionBlock(q));
+    } else {
+        addNewQuestionBlock();
+    }
+}
+
+function addNewQuestionBlock(qData = null) {
+    const container = document.getElementById('questions-container');
+    if (!container) return;
+    const qType = qData ? (qData.type || 'mcq') : 'mcq';
+    const imageUrl = qData ? (qData.imageUrl || '') : '';
+
     const block = document.createElement('div');
     block.className = 'question-block glass';
+    block.style.cssText = 'margin-bottom: 15px; padding: 15px; border-radius: 12px; position: relative;';
+    block.dataset.imageUrl = imageUrl;
+
     block.innerHTML = `
+        <button type="button" class="btn-primary" style="position:absolute; left:12px; top:12px; background:#ef4444; padding:4px 10px; font-size:0.75rem;" onclick="this.closest('.question-block').remove(); refreshExamQuestionsSummary();">
+            <i class="fas fa-times"></i> حذف
+        </button>
         <div class="form-group">
-            <label>السؤال ${questionCount}</label>
-            <textarea class="q-text" placeholder="أدخل نص السؤال"></textarea>
+            <label>نص السؤال</label>
+            <textarea class="q-text" placeholder="أدخل نص السؤال" oninput="refreshExamQuestionsSummary()">${qData ? escapeForAttr(qData.text || '') : ''}</textarea>
         </div>
-        <div class="options-grid">
-            <input type="text" class="opt1" placeholder="الاختيار 1">
-            <input type="text" class="opt2" placeholder="الاختيار 2">
-            <input type="text" class="opt3" placeholder="الاختيار 3">
-            <input type="text" class="opt4" placeholder="الاختيار 4">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+            <div class="form-group" style="margin:0;">
+                <label>نوع السؤال</label>
+                <select class="q-type" onchange="toggleQuestionTypeFields(this)">
+                    <option value="mcq" ${qType === 'mcq' ? 'selected' : ''}>اختيار من متعدد</option>
+                    <option value="tf" ${qType === 'tf' ? 'selected' : ''}>صح وخطأ</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>درجة السؤال</label>
+                <input type="number" class="q-points" min="1" value="${qData ? (qData.points || 1) : 1}" oninput="refreshExamQuestionsSummary()">
+            </div>
         </div>
-        <div class="form-group">
-            <label>رقم الإجابة الصحيحة</label>
-            <select class="correct-idx">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-            </select>
+        <div class="q-options-wrap" style="margin-top:10px;"></div>
+        <div style="margin-top:12px;">
+            <label style="font-size:0.85rem; color: var(--text-muted);"><i class="fas fa-image"></i> صورة للسؤال (اختياري)</label>
+            <input type="file" class="q-image-input" accept="image/*" onchange="readQuestionImageFile(this)" style="display:block; margin-top:5px;">
+            <div class="q-image-preview" style="margin-top:8px;">${imageUrl ? `<img src="${imageUrl}" style="max-width:200px; border-radius:8px; border:1px solid var(--glass-border);"> <button type="button" class="btn-primary" style="background:#ef4444; padding:3px 8px; font-size:0.7rem; margin-right:8px;" onclick="this.closest('.q-image-preview').previousElementSibling.value=''; this.closest('.question-block').dataset.imageUrl=''; this.closest('.q-image-preview').innerHTML='';">حذف الصورة</button>` : ''}</div>
         </div>
     `;
     container.appendChild(block);
+    renderQuestionTypeFields(block, qType, qData);
+    refreshExamQuestionsSummary();
+}
+
+function toggleQuestionTypeFields(select) {
+    const block = select.closest('.question-block');
+    renderQuestionTypeFields(block, select.value);
+}
+
+function renderQuestionTypeFields(block, type, qData = null) {
+    const wrap = block.querySelector('.q-options-wrap');
+    const correctVal = qData ? (qData.correct ?? 0) : 0;
+    if (type === 'tf') {
+        wrap.innerHTML = `
+            <div class="form-group">
+                <label>الإجابة الصحيحة</label>
+                <select class="q-correct">
+                    <option value="0" ${correctVal == 0 ? 'selected' : ''}>صح</option>
+                    <option value="1" ${correctVal == 1 ? 'selected' : ''}>خطأ</option>
+                </select>
+            </div>
+            <input type="hidden" class="opt1" value="صح">
+            <input type="hidden" class="opt2" value="خطأ">
+            <input type="hidden" class="opt3" value="">
+            <input type="hidden" class="opt4" value="">
+        `;
+    } else {
+        const opts = qData && Array.isArray(qData.opts) ? qData.opts : ['', '', '', ''];
+        wrap.innerHTML = `
+            <div class="options-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <input type="text" class="opt1" placeholder="الاختيار 1" value="${escapeForAttr(opts[0] || '')}">
+                <input type="text" class="opt2" placeholder="الاختيار 2" value="${escapeForAttr(opts[1] || '')}">
+                <input type="text" class="opt3" placeholder="الاختيار 3" value="${escapeForAttr(opts[2] || '')}">
+                <input type="text" class="opt4" placeholder="الاختيار 4" value="${escapeForAttr(opts[3] || '')}">
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label>الإجابة الصحيحة</label>
+                <select class="q-correct">
+                    <option value="0" ${correctVal == 0 ? 'selected' : ''}>الاختيار 1</option>
+                    <option value="1" ${correctVal == 1 ? 'selected' : ''}>الاختيار 2</option>
+                    <option value="2" ${correctVal == 2 ? 'selected' : ''}>الاختيار 3</option>
+                    <option value="3" ${correctVal == 3 ? 'selected' : ''}>الاختيار 4</option>
+                </select>
+            </div>
+        `;
+    }
+}
+
+function readQuestionImageFile(input) {
+    const file = input.files && input.files[0];
+    const block = input.closest('.question-block');
+    if (!file || !block) return;
+    if (!file.type.startsWith('image/')) { alert('برجاء اختيار ملف صورة فقط'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+        block.dataset.imageUrl = reader.result;
+        block.querySelector('.q-image-preview').innerHTML = `<img src="${reader.result}" style="max-width:200px; border-radius:8px; border:1px solid var(--glass-border);"> <button type="button" class="btn-primary" style="background:#ef4444; padding:3px 8px; font-size:0.7rem; margin-right:8px;" onclick="this.closest('.q-image-preview').previousElementSibling.value=''; this.closest('.question-block').dataset.imageUrl=''; this.closest('.q-image-preview').innerHTML='';">حذف الصورة</button>`;
+    };
+    reader.readAsDataURL(file);
+}
+
+function refreshExamQuestionsSummary() {
+    const blocks = document.querySelectorAll('#questions-container .question-block');
+    let points = 0;
+    blocks.forEach(b => {
+        const p = parseInt(b.querySelector('.q-points')?.value, 10) || 1;
+        points += p;
+    });
+    const summary = document.getElementById('exam-questions-summary');
+    if (summary) summary.textContent = `${blocks.length} سؤال | ${points} درجة`;
+}
+
+function escapeForAttr(str) {
+    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function saveNewLesson() {
@@ -1674,12 +2112,14 @@ async function saveNewLesson() {
     const branch = document.getElementById('lesson-branch').value;
     const requiredExamId = document.getElementById('lesson-required-exam').value;
     const minScore = parseInt(document.getElementById('lesson-min-score').value) || 0;
+    const imageUrl = document.getElementById('lesson-image-preview')?.dataset.uploadedUrl || null;
 
     if (!url || !title) return alert('برجاء ملء البيانات');
 
     const newLesson = {
         url, title, grade, branch,
         desc: desc || 'درس فيديو توضيحي',
+        imageUrl: imageUrl || null,
         requiredExamId: requiredExamId || null,
         minScore: minScore,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1699,61 +2139,78 @@ async function saveNewLesson() {
 }
 
 async function saveNewExam() {
+    const editId = document.getElementById('exam-edit-id')?.value || null;
     const title = document.getElementById('exam-title').value.trim();
     const grade = document.getElementById('exam-grade').value;
     const branch = document.getElementById('exam-branch').value;
-    const imageUrl = document.getElementById('exam-image-url').value.trim();
+    const sheetImageUrl = document.getElementById('exam-image-url').value.trim();
     const imageQCount = parseInt(document.getElementById('exam-image-q-count').value) || 0;
-    const minPassScore = parseInt(document.getElementById('exam-min-pass-score')?.value) || 0;
+    const minPassPercent = parseInt(document.getElementById('exam-min-pass-score')?.value) || 0;
     const duration = parseInt(document.getElementById('exam-duration')?.value) || 15;
 
     if (!title) return alert('برجاء إدخال عنوان للاختبار');
 
     let questions = [];
 
-    if (imageUrl && imageQCount > 0) {
-        // Handle image-based exam questions
+    if (sheetImageUrl && imageQCount > 0) {
+        // Image-sheet exam: one correct choice (1-4) per question, no individual question images.
         for (let i = 1; i <= imageQCount; i++) {
             const correctChild = document.getElementById(`img-q-correct-${i}`);
             if (correctChild) {
                 questions.push({
                     text: `سؤال رقم ${i}`,
+                    type: 'mcq',
                     opts: ['1', '2', '3', '4'],
-                    correct: correctChild.value
+                    correct: parseInt(correctChild.value, 10) - 1,
+                    points: 1,
+                    imageUrl: null
                 });
             }
         }
     } else {
-        // Handle traditional text-based questions
-        const qBlocks = document.querySelectorAll('.question-block');
+        const qBlocks = document.querySelectorAll('#questions-container .question-block');
         qBlocks.forEach(block => {
             const text = block.querySelector('.q-text').value.trim();
+            const type = block.querySelector('.q-type')?.value || 'mcq';
             const opts = [
-                block.querySelector('.opt1').value.trim(),
-                block.querySelector('.opt2').value.trim(),
-                block.querySelector('.opt3').value.trim(),
-                block.querySelector('.opt4').value.trim()
+                block.querySelector('.opt1')?.value.trim() || '',
+                block.querySelector('.opt2')?.value.trim() || '',
+                block.querySelector('.opt3')?.value.trim() || '',
+                block.querySelector('.opt4')?.value.trim() || ''
             ];
-            const correctVal = block.querySelector('.q-correct')?.value || block.querySelector('.correct-idx')?.value;
-            if (text) questions.push({ text, opts, correct: correctVal });
+            const correct = parseInt(block.querySelector('.q-correct')?.value, 10) || 0;
+            const points = parseInt(block.querySelector('.q-points')?.value, 10) || 1;
+            const imageUrl = block.dataset.imageUrl || null;
+            if (text) questions.push({ text, type, opts, correct, points, imageUrl });
         });
     }
 
     if (questions.length === 0) return alert('برجاء إضافة أسئلة للاختبار');
 
+    const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0);
+
     const examData = {
         title, grade, branch, questions,
-        imageUrl: imageUrl || null,
-        minPassScore: minPassScore,
+        sheetImageUrl: sheetImageUrl || null,
+        minPassPercent: minPassPercent,
         duration: duration,
-        createdAt: new Date().toISOString()
+        totalPoints: totalPoints
     };
 
     try {
-        const docRef = await db.collection('exams').add(examData);
-        examData.id = docRef.id;
-        appData.exams.unshift(examData);
-        alert('تم حفظ الاختبار بنجاح 🎉');
+        if (editId) {
+            await db.collection('exams').doc(editId).update(examData);
+            const idx = appData.exams.findIndex(e => e.id === editId);
+            if (idx > -1) appData.exams[idx] = { ...appData.exams[idx], ...examData };
+            alert('تم تحديث الاختبار بنجاح ✅');
+            currentState.editingExamId = null;
+        } else {
+            examData.createdAt = new Date().toISOString();
+            const docRef = await db.collection('exams').add(examData);
+            examData.id = docRef.id;
+            appData.exams.unshift(examData);
+            alert('تم حفظ الاختبار بنجاح 🎉');
+        }
         renderAdminSection('add-exam');
     } catch (error) {
         console.error('Error saving exam:', error);
@@ -1761,20 +2218,90 @@ async function saveNewExam() {
     }
 }
 
-function renderImageAnswersGrid() {
+function renderImageAnswersGrid(editingExam = null) {
     const count = parseInt(document.getElementById('exam-image-q-count').value) || 0;
     const container = document.getElementById('image-answers-grid');
     if (!container) return;
 
     container.innerHTML = '';
     for (let i = 1; i <= count; i++) {
+        const existing = editingExam && editingExam.questions && editingExam.questions[i - 1];
+        const correctVal = existing ? (parseInt(existing.correct, 10) + 1) : 1;
         container.innerHTML += `
-            <div style="background: rgba(255,255,255,0.05); padding: 5px; border-radius: 5px; text-align: center;">
+            <div style="background: var(--input-bg); padding: 5px; border-radius: 5px; text-align: center;">
                 <label style="font-size: 0.7rem; display: block;">س ${i} (الصح)</label>
-                <input type="number" id="img-q-correct-${i}" min="1" max="4" value="1" style="width: 100%; padding: 3px; border-radius: 4px; border: 1px solid var(--glass-border); background: #000; color: #fff; text-align: center;">
+                <input type="number" id="img-q-correct-${i}" min="1" max="4" value="${correctVal}" style="width: 100%; padding: 3px; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--input-bg); color: var(--text-primary); text-align: center;">
             </div>
         `;
     }
+}
+
+// ==== EXAM RESULTS (Admin) ====
+function openExamResultsModal(examId) {
+    const exam = appData.exams.find(e => e.id === examId);
+    if (!exam) return;
+
+    const results = appData.results.filter(r => r.examId === examId);
+    const total = results.length;
+    const passed = results.filter(r => r.isPassed).length;
+    const failed = total - passed;
+    const avg = total ? Math.round(results.reduce((sum, r) => sum + (r.percentage || Math.round((r.score / r.total) * 100)), 0) / total) : 0;
+
+    document.getElementById('exam-results-title').innerHTML = `<i class="fas fa-poll"></i> نتائج: ${exam.title}`;
+    document.getElementById('exam-results-stats').innerHTML = `
+        <div class="stat-item glass"><h4>${total}</h4><p>إجمالي المحاولات</p></div>
+        <div class="stat-item glass"><h4 style="color:#22c55e;">${passed}</h4><p>ناجح</p></div>
+        <div class="stat-item glass"><h4 style="color:#ef4444;">${failed}</h4><p>غير ناجح</p></div>
+        <div class="stat-item glass"><h4 style="color:var(--primary-light);">${avg}%</h4><p>متوسط النسبة</p></div>
+    `;
+
+    const tbody = document.getElementById('exam-results-tbody');
+    if (!results.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد محاولات على هذا الاختبار حتى الآن</td></tr>`;
+    } else {
+        tbody.innerHTML = results.slice().reverse().map(r => {
+            const pct = r.percentage || Math.round((r.score / r.total) * 100);
+            return `
+                <tr>
+                    <td>${r.studentName}</td>
+                    <td>${r.studentPhone || '—'}</td>
+                    <td><strong>${r.score} / ${r.total}</strong></td>
+                    <td>${pct}%</td>
+                    <td>
+                        <span style="background:${r.isPassed ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${r.isPassed ? '#4ade80' : '#f87171'}; padding:3px 8px; border-radius:6px; font-size:0.75rem;">
+                            ${r.isPassed ? 'ناجح ✅' : 'غير ناجح ❌'}
+                        </span>
+                    </td>
+                    <td style="font-size:0.78rem;">${new Date(r.createdAt).toLocaleString('ar-EG')}</td>
+                    <td>
+                        <button class="btn-primary" style="background:#f59e0b; padding:4px 8px; font-size:0.75rem;" onclick="resetStudentExamAttempt('${examId}', '${r.id}', '${(r.studentPhone || '').replace(/'/g, "\\'")}')">
+                            <i class="fas fa-undo"></i> تصفير المحاولة
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    document.getElementById('exam-results-modal').style.display = 'flex';
+}
+
+async function resetStudentExamAttempt(examId, resultId, studentPhone) {
+    if (!confirm('هل تريد تصفير محاولة هذا الطالب للسماح له بإعادة الاختبار؟')) return;
+    try {
+        await db.collection('results').doc(resultId).delete();
+        appData.results = appData.results.filter(r => r.id !== resultId);
+    } catch (e) {
+        console.error('Error deleting result:', e);
+    }
+    // Clear the local one-attempt lock so the student device can retake it too.
+    try {
+        const takenExams = JSON.parse(localStorage.getItem('takenExams') || '{}');
+        delete takenExams[examId];
+        localStorage.setItem('takenExams', JSON.stringify(takenExams));
+    } catch (e) { }
+    openExamResultsModal(examId);
+    alert('تم تصفير المحاولة بنجاح 🔄');
 }
 
 async function saveNewFile() {
@@ -2538,7 +3065,7 @@ function renderPackages() {
 
     container.innerHTML = filtered.map(pkg => {
         const isUnlocked = localStorage.getItem(`pkg_unlocked_${pkg.id}`) === 'true';
-        const videos = pkg.videos || [];
+        const videos = pkg.lessons || pkg.videos || [];
 
         // Use package image if available, else use video thumbnails
         let topVisualHtml = '';
@@ -2548,10 +3075,8 @@ function renderPackages() {
                     <img src="${pkg.imageUrl}" alt="${pkg.name}" 
                          style="width:100%; height:100%; object-fit:cover; display:block; border-radius:16px 16px 0 0;">
                     ${!isUnlocked ? `
-                        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
-                            <div style="background:rgba(0,0,0,0.7); width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,0.2);">
-                                <i class="fas fa-lock" style="color:#fff; font-size:1.8rem;"></i>
-                            </div>
+                        <div style="position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.65); width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1.5px solid rgba(255,255,255,0.25); box-shadow:0 2px 10px rgba(0,0,0,0.4);">
+                            <i class="fas fa-lock" style="color:#fff; font-size:1.05rem;"></i>
                         </div>
                     ` : `
                         <div style="position:absolute; inset:0; background:linear-gradient(transparent, rgba(0,0,0,0.5));"></div>
@@ -2563,10 +3088,16 @@ function renderPackages() {
                 const ytId = getYouTubeId(v.url);
                 return `<div style="position:relative;overflow:hidden;border-radius:10px;aspect-ratio:16/9;background:#111; border:1px solid rgba(255,255,255,0.1);">
                     <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" alt="${v.title}"
-                         style="width:100%;height:100%;object-fit:cover;${isUnlocked ? '' : 'filter:brightness(0.4) grayscale(0.5);'}">
-                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-${isUnlocked ? 'play-circle' : 'lock'}" style="color:rgba(255,255,255,0.9);font-size:1.6rem; text-shadow:0 2px 10px rgba(0,0,0,0.5);"></i>
-                    </div>
+                         style="width:100%;height:100%;object-fit:cover;">
+                    ${!isUnlocked ? `
+                        <div style="position:absolute; top:6px; left:6px; background:rgba(0,0,0,0.65); width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-lock" style="color:#fff; font-size:0.7rem;"></i>
+                        </div>
+                    ` : `
+                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-play-circle" style="color:rgba(255,255,255,0.9);font-size:1.6rem; text-shadow:0 2px 10px rgba(0,0,0,0.5);"></i>
+                        </div>
+                    `}
                 </div>`;
             }).join('');
 
@@ -2578,13 +3109,13 @@ function renderPackages() {
         }
 
         return `
-        <div class="package-card glass" style="border-radius:20px;overflow:hidden;border:1px solid var(--glass-border);transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position:relative; background: rgba(15,15,15,0.7);" onmouseenter="this.style.transform='translateY(-8px)'; this.style.borderColor='var(--primary-light)';" onmouseleave="this.style.transform='translateY(0)'; this.style.borderColor='var(--glass-border)';">
+        <div class="package-card glass" style="border-radius:20px;overflow:hidden;border:1px solid var(--glass-border);transition:all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position:relative;" onmouseenter="this.style.transform='translateY(-8px)'; this.style.borderColor='var(--primary-light)';" onmouseleave="this.style.transform='translateY(0)'; this.style.borderColor='var(--glass-border)';">
             ${topVisualHtml}
             
             <div style="padding:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                     <div style="flex:1;">
-                        <h3 style="margin:0;font-size:1.25rem;color:#fff; font-weight:700; line-height:1.4;">${pkg.name}</h3>
+                        <h3 style="margin:0;font-size:1.25rem;color:var(--text-primary); font-weight:700; line-height:1.4;">${pkg.name}</h3>
                         <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
                             <span style="background:rgba(99,102,241,0.15); color:#a5b4fc; padding:3px 10px; border-radius:6px; font-size:0.75rem;"><i class="fas fa-graduation-cap"></i> ${appData.grades[pkg.grade]?.title || pkg.grade}</span>
                             <span style="color:var(--text-muted); font-size:0.75rem;"><i class="fas fa-video"></i> ${videos.length} حصة</span>
@@ -2600,7 +3131,7 @@ function renderPackages() {
                     `}
                 </div>
 
-                ${pkg.description ? `<p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin-bottom:18px; line-height:1.6;">${pkg.description}</p>` : ''}
+                ${pkg.description ? `<p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:18px; line-height:1.6;">${pkg.description}</p>` : ''}
                 
                 ${isUnlocked
                 ? `<button class="btn-primary w-100" onclick="watchPackage('${pkg.id}')" style="background:linear-gradient(135deg,#22c55e,#16a34a); box-shadow:0 4px 15px rgba(22,163,74,0.3); padding:14px; border-radius:12px; font-weight:600;">
@@ -2634,13 +3165,13 @@ function openPackageModal(pkgId) {
                 <div style="font-size:0.8rem;color:var(--text-muted);">مدة الباقة</div>
             </div>` : ''}
             <div style="background:rgba(245,158,11,0.1);border-radius:10px;padding:10px 16px;flex:1;min-width:110px;text-align:center;">
-                <div style="font-size:1.6rem;font-weight:800;color:#fbbf24;">${(pkg.videos || []).length}</div>
-                <div style="font-size:0.8rem;color:var(--text-muted);">فيديو</div>
+                <div style="font-size:1.6rem;font-weight:800;color:#fbbf24;">${(pkg.lessons || pkg.videos || []).length}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);">درس</div>
             </div>
         </div>
         <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:4px;">
             <i class="fas fa-mobile-alt" style="color:#a5b4fc;"></i>
-            رقم فودافون كاش: <strong id="vodafone-cash-num" onclick="copyToClipboard('01028164601', this)" style="color:#fff;font-family:monospace;cursor:pointer;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,0.05);transition:0.3s;" title="اضغط للنسخ">01028164601</strong>
+            رقم فودافون كاش: <strong id="vodafone-cash-num" onclick="copyToClipboard('01028164601', this)" style="color:var(--text-primary);font-family:monospace;cursor:pointer;padding:2px 5px;border-radius:4px;background:var(--input-bg);transition:0.3s;" title="اضغط للنسخ">01028164601</strong>
         </p>
         <p style="color:var(--text-muted);font-size:0.82rem;">حوّل المبلغ وأرسل صورة الإيصال عبر واتساب لاستلام الكود</p>
     `;
@@ -2755,8 +3286,9 @@ function subscribeViaWhatsApp() {
 function watchPackage(pkgId) {
     const pkg = appData.packages.find(p => p.id === pkgId);
     if (!pkg) return;
-    const videos = pkg.videos || [];
-    if (!videos.length) return alert('لا توجد فيديوهات في هذه الباقة');
+    // Backward compatibility: old packages stored "videos", new packages store "lessons"
+    const lessons = pkg.lessons || (pkg.videos || []).map(v => ({ title: v.title, url: v.url, imageUrl: null, examId: null, fileUrl: null }));
+    if (!lessons.length) return alert('لا توجد دروس في هذه الباقة');
 
     const existing = document.getElementById('watch-package-modal');
     if (existing) existing.remove();
@@ -2772,13 +3304,15 @@ function watchPackage(pkgId) {
                 <button onclick="document.getElementById('watch-package-modal').remove()" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
             </div>
             <div style="display:grid;gap:12px;">
-                ${videos.map((v, i) => {
+                ${lessons.map((v, i) => {
         const ytId = getYouTubeId(v.url);
         const wrapperId = `pkg-vid-wrapper-${pkgId}-${i}`;
         const playerId = `pkg-player-${pkgId}-${i}`;
         const vid_key = `pkg-${pkgId}-${i}`;
+        const linkedExam = v.examId ? appData.exams.find(e => e.id === v.examId) : null;
         return `
                     <div class="item-card" style="margin:0;">
+                        ${v.imageUrl ? `<img src="${v.imageUrl}" alt="${v.title}" style="width:100%; max-height:160px; object-fit:cover; border-radius:14px 14px 0 0; display:block;">` : ''}
                         <div class="video-preview-wrapper" id="${wrapperId}">
                             ${ytId ? `<div id="${playerId}"></div>` : (
                 v.url.match(/\.(mp4|webm|ogg)$/i)
@@ -2800,13 +3334,21 @@ function watchPackage(pkgId) {
                                 </div>
                             </div>` : ''}
                         </div>
-                        <div class="item-info"><h4>${v.title}</h4></div>
+                        <div class="item-info">
+                            <h4>${v.title}</h4>
+                            ${(linkedExam || v.fileUrl) ? `
+                                <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                                    ${linkedExam ? `<button class="btn-primary" style="background:#7c3aed; padding:6px 14px; font-size:0.8rem;" onclick="document.getElementById('watch-package-modal').remove(); startExam('${linkedExam.id}');"><i class="fas fa-file-signature"></i> اختبار الدرس</button>` : ''}
+                                    ${v.fileUrl ? `<a href="${v.fileUrl}" target="_blank" class="btn-primary" style="background:#0ea5e9; padding:6px 14px; font-size:0.8rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-file-pdf"></i> المذكرة</a>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>`;
     }).join('')}
             </div>
         </div>`;
     document.body.appendChild(modal);
-    videos.forEach((v, i) => {
+    lessons.forEach((v, i) => {
         const ytId = getYouTubeId(v.url);
         if (ytId) {
             const vid_key = `pkg-${pkgId}-${i}`;
@@ -2816,68 +3358,126 @@ function watchPackage(pkgId) {
     });
 }
 
+// ---- Admin: Manage Grades (Educational Stages) Images ----
+function renderManageGradesSection(main) {
+    main.innerHTML = `
+        <h3>إدارة المراحل التعليمية 🏫</h3>
+        <p style="color:var(--text-muted); margin-bottom:20px;">يمكنك رفع أو تغيير صورة كل مرحلة تعليمية، وستظهر هذه الصورة بدلاً من الأيقونة الافتراضية في الصفحة الرئيسية.</p>
+        <div style="display:grid; gap:16px;">
+            ${Object.entries(appData.grades).map(([gradeId, grade]) => `
+                <div class="glass" style="padding:16px; border-radius:12px; border:1px solid var(--glass-border); display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                    <div style="width:120px; height:80px; border-radius:10px; overflow:hidden; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        ${grade.imageUrl
+            ? `<img src="${grade.imageUrl}" style="width:100%; height:100%; object-fit:cover;">`
+            : `<i class="fas ${grade.icon || 'fa-graduation-cap'}" style="font-size:2rem; color:var(--primary-light);"></i>`
+        }
+                    </div>
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="margin:0 0 4px;">${grade.title}</h4>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">${grade.desc || ''}</p>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; min-width:220px;">
+                        <input type="file" accept="image/*" id="grade-img-input-${gradeId}" onchange="handleGradeImageUpload('${gradeId}', this)">
+                        <div id="grade-img-status-${gradeId}" style="font-size:0.78rem; color:var(--text-muted);"></div>
+                        ${grade.imageUrl ? `<button class="btn-primary" style="background:#ef4444; padding:5px 10px; font-size:0.78rem;" onclick="removeGradeImage('${gradeId}')"><i class="fas fa-trash"></i> إزالة الصورة</button>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function handleGradeImageUpload(gradeId, inputEl) {
+    const file = inputEl.files && inputEl.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById(`grade-img-status-${gradeId}`);
+    if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري رفع الصورة...';
+
+    const url = await uploadToCloudinary(file);
+    if (!url) {
+        if (statusEl) statusEl.textContent = '';
+        return;
+    }
+
+    try {
+        await db.collection('settings').doc('gradesImages').set({ [gradeId]: url }, { merge: true });
+        appData.grades[gradeId].imageUrl = url;
+        if (statusEl) statusEl.innerHTML = '<span style="color:#4ade80;"><i class="fas fa-check"></i> تم الحفظ بنجاح</span>';
+        renderGradesGrid();
+        renderManageGradesSection(document.getElementById('admin-content-area'));
+    } catch (e) {
+        console.error('Error saving grade image:', e);
+        if (statusEl) statusEl.innerHTML = '<span style="color:#f87171;">فشل الحفظ</span>';
+    }
+}
+
+async function removeGradeImage(gradeId) {
+    if (!confirm('هل تريد إزالة صورة هذه المرحلة والعودة للأيقونة الافتراضية؟')) return;
+    try {
+        await db.collection('settings').doc('gradesImages').set({ [gradeId]: null }, { merge: true });
+        appData.grades[gradeId].imageUrl = null;
+        renderGradesGrid();
+        renderManageGradesSection(document.getElementById('admin-content-area'));
+    } catch (e) {
+        console.error('Error removing grade image:', e);
+        alert('فشل حذف الصورة');
+    }
+}
+
 // ---- Admin: Add Package Section ----
 function renderAddPackageSection(main) {
+    const editingPkg = currentState.editingPackageId ? appData.packages.find(p => p.id === currentState.editingPackageId) : null;
     main.innerHTML = `
         <h3>${currentState.editingPackageId ? 'تعديل باقة' : 'إضافة باقة جديدة'} 📦</h3>
         <div class="admin-form-container">
             <div class="form-group">
                 <label>اسم الباقة</label>
-                <input type="text" id="pkg-name" placeholder="مثلاً: باقة الجبر والهندسة الكاملة">
+                <input type="text" id="pkg-name" placeholder="مثلاً: باقة الجبر والهندسة الكاملة" value="${editingPkg ? escapeForAttr(editingPkg.name) : ''}">
             </div>
             <div class="form-group">
                 <label>وصف الباقة (اختياري)</label>
-                <input type="text" id="pkg-desc" placeholder="مثلاً: تشمل جميع دروس الجبر والهندسة">
+                <input type="text" id="pkg-desc" placeholder="مثلاً: تشمل جميع دروس الجبر والهندسة" value="${editingPkg ? escapeForAttr(editingPkg.description || '') : ''}">
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
                 <div class="form-group" style="margin:0;">
                     <label>السعر (ج.م)</label>
-                    <input type="number" id="pkg-price" placeholder="150" min="0">
+                    <input type="number" id="pkg-price" placeholder="150" min="0" value="${editingPkg ? editingPkg.price : ''}">
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label>مدة الباقة</label>
-                    <input type="text" id="pkg-duration" placeholder="شهر كامل">
+                    <input type="text" id="pkg-duration" placeholder="شهر كامل" value="${editingPkg ? escapeForAttr(editingPkg.duration || '') : ''}">
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label>المرحلة الدراسية</label>
                     <select id="pkg-grade">
-                        <option value="3mid">الصف الثالث الإعدادي</option>
-                        <option value="1sec">الصف الأول الثانوي</option>
-                        <option value="2sec">الصف الثاني الثانوي</option>
-                        <option value="3sec-sci">الصف الثالث الثانوي (علمي)</option>
-                        <option value="3sec-lit">الصف الثالث الثانوي (أدبي)</option>
+                        <option value="3mid" ${editingPkg?.grade === '3mid' ? 'selected' : ''}>الصف الثالث الإعدادي</option>
+                        <option value="1sec" ${editingPkg?.grade === '1sec' ? 'selected' : ''}>الصف الأول الثانوي</option>
+                        <option value="2sec" ${editingPkg?.grade === '2sec' ? 'selected' : ''}>الصف الثاني الثانوي</option>
+                        <option value="3sec-sci" ${editingPkg?.grade === '3sec-sci' ? 'selected' : ''}>الصف الثالث الثانوي (علمي)</option>
+                        <option value="3sec-lit" ${editingPkg?.grade === '3sec-lit' ? 'selected' : ''}>الصف الثالث الثانوي (أدبي)</option>
                     </select>
                 </div>
             </div>
         </div>
 
         <div style="margin-top:20px; padding:15px; background:rgba(212,175,55,0.05); border-radius:12px; border:1px dashed var(--primary-color);">
-            <h4 style="margin-bottom:12px; color:var(--primary-light);"><i class="fas fa-image"></i> اختر صورة عرض الباقة (اختياري)</h4>
-            <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:10px;">
-                ${PACKAGE_IMAGES.map(img => `
-                    <label style="cursor:pointer; flex: 0 0 150px; text-align:center;">
-                        <input type="radio" name="pkg-image" value="${img.url}" style="display:none;" onchange="updatePackageImagePreview(this.value)">
-                        <div class="pkg-img-option" data-url="${img.url}" style="border:2px solid transparent; border-radius:8px; overflow:hidden; transition:0.3s; height:85px;">
-                            <img src="${img.url}" style="width:100%; height:100%; object-fit:cover;">
-                        </div>
-                        <span style="font-size:0.85rem; margin-top:5px; display:block;">${img.name}</span>
-                    </label>
-                `).join('')}
-                <label style="cursor:pointer; flex: 0 0 150px; text-align:center;">
-                    <input type="radio" name="pkg-image" value="" style="display:none;" onchange="updatePackageImagePreview('')" checked>
-                    <div class="pkg-img-option" style="border:2px solid var(--primary-color); border-radius:8px; display:flex; align-items:center; justify-content:center; height:85px; background:rgba(0,0,0,0.4);">
-                        <i class="fas fa-video-slash"></i>
+            <h4 style="margin-bottom:12px; color:var(--primary-light);"><i class="fas fa-image"></i> صورة عرض الباقة</h4>
+            <input type="file" id="pkg-image-input" accept="image/*" onchange="handleImageInputUpload(this, 'pkg-image-preview')">
+            <div id="pkg-image-preview" style="margin-top:12px;" data-uploaded-url="${editingPkg && editingPkg.imageUrl ? editingPkg.imageUrl : ''}">
+                ${editingPkg && editingPkg.imageUrl ? `
+                    <div style="position:relative; display:inline-block;">
+                        <img src="${editingPkg.imageUrl}" style="max-width:200px; max-height:140px; border-radius:8px; border:1px solid var(--glass-border); display:block;">
                     </div>
-                    <span style="font-size:0.85rem; margin-top:5px; display:block;">بدون صورة (عرض الفيديوهات)</span>
-                </label>
+                ` : ''}
             </div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-top:8px;"><i class="fas fa-info-circle"></i> إذا لم تُرفع صورة، سيتم عرض صور مصغرة من فيديوهات الباقة تلقائياً.</p>
         </div>
 
         <div style="margin-top:20px;">
-            <h4 style="margin-bottom:12px;"><i class="fas fa-film"></i> فيديوهات الباقة</h4>
-            <div id="pkg-video-rows"></div>
-            <button class="btn-secondary" onclick="addPkgVideoRow()" style="margin-top:10px;">
-                <i class="fas fa-plus"></i> إضافة فيديو
+            <h4 style="margin-bottom:12px;"><i class="fas fa-book-open"></i> دروس الباقة</h4>
+            <div id="pkg-lesson-rows"></div>
+            <button class="btn-secondary" onclick="addPkgLessonRow()" style="margin-top:10px;">
+                <i class="fas fa-plus"></i> إضافة درس
             </button>
         </div>
 
@@ -2900,13 +3500,14 @@ function renderAddPackageSection(main) {
             : appData.packages.map(pkg => {
                 const pkgVouchers = appData.packageVouchers.filter(v => v.packageId === pkg.id);
                 const usedCount = pkgVouchers.filter(v => v.isUsed).length;
+                const lessonsCount = (pkg.lessons || pkg.videos || []).length;
                 return `
                     <div class="glass" style="border-radius:12px;padding:16px;border:1px solid var(--glass-border);">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
                             <div>
                                 <h4 style="margin:0 0 4px;">${pkg.name}</h4>
                                 <p style="color:var(--text-muted);font-size:0.85rem;margin:0;">
-                                    ${appData.grades[pkg.grade]?.title || pkg.grade} | ${pkg.price} ج.م | ${pkg.duration || 'غير محدد'} | ${(pkg.videos || []).length} فيديو
+                                    ${appData.grades[pkg.grade]?.title || pkg.grade} | ${pkg.price} ج.م | ${pkg.duration || 'غير محدد'} | ${lessonsCount} درس
                                 </p>
                                 <p style="color:#a5b4fc;font-size:0.82rem;margin:6px 0 0;">
                                     أكواد: ${pkgVouchers.length} إجمالي | ${usedCount} مستخدم | ${pkgVouchers.length - usedCount} متاح
@@ -2931,25 +3532,15 @@ function renderAddPackageSection(main) {
             }).join('')}
         </div>
     `;
-    if (document.getElementById('pkg-video-rows').children.length === 0) addPkgVideoRow();
+
+    if (editingPkg && (editingPkg.lessons || editingPkg.videos || []).length) {
+        (editingPkg.lessons || editingPkg.videos).forEach(l => addPkgLessonRow(l));
+    } else {
+        addPkgLessonRow();
+    }
 
     // Initialize
     updateAdminBranches('pkg');
-    updatePackageImagePreview('');
-}
-
-let pkgVideoRowCount = 0;
-function addPkgVideoRow() {
-    pkgVideoRowCount++;
-    const container = document.getElementById('pkg-video-rows');
-    const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:10px;align-items:center;';
-    row.innerHTML = `
-        <input type="text" class="pkg-vid-title" placeholder="اسم الفيديو" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
-        <input type="text" class="pkg-vid-url" placeholder="رابط يوتيوب" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
-        <button onclick="this.parentElement.remove()" style="background:#ef4444;border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;"><i class="fas fa-times"></i></button>
-    `;
-    container.appendChild(row);
 }
 
 async function saveNewPackage() {
@@ -2958,25 +3549,30 @@ async function saveNewPackage() {
     const price = document.getElementById('pkg-price').value;
     const duration = document.getElementById('pkg-duration').value.trim();
     const grade = document.getElementById('pkg-grade').value;
-    const imageUrl = document.querySelector('input[name="pkg-image"]:checked')?.value || null;
+    const imageUrl = document.getElementById('pkg-image-preview')?.dataset.uploadedUrl || null;
 
     if (!name || !price) return alert('برجاء إدخال اسم الباقة والسعر');
 
-    const rows = document.querySelectorAll('.pkg-vid-title');
-    const urlRows = document.querySelectorAll('.pkg-vid-url');
-    const videos = [];
-    rows.forEach((r, i) => {
-        const title = r.value.trim();
-        const url = urlRows[i].value.trim();
-        if (title && url) videos.push({ title, url });
+    const lessonRows = document.querySelectorAll('.pkg-lesson-row');
+    const lessons = [];
+    lessonRows.forEach(row => {
+        const title = row.querySelector('.pkg-lesson-title')?.value.trim();
+        const url = row.querySelector('.pkg-lesson-url')?.value.trim();
+        if (!title || !url) return;
+        const lessonImageUrl = row.querySelector('.pkg-lesson-image-preview')?.dataset.uploadedUrl || null;
+        const hasExam = row.querySelector('.pkg-lesson-has-exam')?.value === 'yes';
+        const examId = hasExam ? (row.querySelector('.pkg-lesson-exam-select')?.value || null) : null;
+        const hasFile = row.querySelector('.pkg-lesson-has-file')?.value === 'yes';
+        const fileUrl = hasFile ? (row.querySelector('.pkg-lesson-file-url')?.value.trim() || null) : null;
+        lessons.push({ title, url, imageUrl: lessonImageUrl, examId, fileUrl });
     });
 
-    if (videos.length === 0) return alert('برجاء إضافة فيديو واحد على الأقل');
+    if (lessons.length === 0) return alert('برجاء إضافة درس واحد على الأقل');
 
     try {
         const pkgData = {
             name, description: desc, price: Number(price),
-            duration, grade, videos, imageUrl,
+            duration, grade, lessons, imageUrl,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -2990,7 +3586,7 @@ async function saveNewPackage() {
             alert(`✅ تم حفظ باقة "${name}" بنجاح!`);
         }
 
-        pkgVideoRowCount = 0;
+        pkgLessonRowCount = 0;
         renderAdminSection('add-package');
     } catch (err) {
         console.error(err);
@@ -3005,42 +3601,6 @@ function editPackage(pkgId) {
     currentState.editingPackageId = pkgId;
     renderAdminSection('add-package');
 
-    // Populate fields
-    document.getElementById('pkg-name').value = pkg.name;
-    document.getElementById('pkg-desc').value = pkg.description || '';
-    document.getElementById('pkg-price').value = pkg.price;
-    document.getElementById('pkg-duration').value = pkg.duration || '';
-    document.getElementById('pkg-grade').value = pkg.grade;
-
-    // Populate image choice
-    const radios = document.querySelectorAll('input[name="pkg-image"]');
-    radios.forEach(r => {
-        if (r.value === (pkg.imageUrl || '')) {
-            r.checked = true;
-            updatePackageImagePreview(r.value);
-        }
-    });
-
-    // Populate videos
-    const container = document.getElementById('pkg-video-rows');
-    container.innerHTML = '';
-    pkgVideoRowCount = 0;
-    if (pkg.videos && pkg.videos.length) {
-        pkg.videos.forEach(v => {
-            pkgVideoRowCount++;
-            const row = document.createElement('div');
-            row.style.cssText = 'display:grid;grid-template-columns:1fr 2fr auto;gap:10px;margin-bottom:10px;align-items:center;';
-            row.innerHTML = `
-                <input type="text" class="pkg-vid-title" value="${v.title}" placeholder="اسم الفيديو" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
-                <input type="text" class="pkg-vid-url" value="${v.url}" placeholder="رابط يوتيوب" style="padding:10px;border-radius:8px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.05);color:#fff;">
-                <button onclick="this.parentElement.remove()" style="background:#ef4444;border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer;"><i class="fas fa-times"></i></button>
-            `;
-            container.appendChild(row);
-        });
-    } else {
-        addPkgVideoRow();
-    }
-
     // Scroll to form
     document.getElementById('admin-content-area').scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -3050,22 +3610,77 @@ function cancelPkgEdit() {
     renderAdminSection('add-package');
 }
 
-function updatePackageImagePreview(val) {
-    const options = document.querySelectorAll('.pkg-img-option');
-    options.forEach(opt => {
-        const url = opt.dataset.url || '';
-        if (url === val) {
-            opt.style.borderColor = 'var(--primary-light)';
-            opt.style.boxShadow = '0 0 10px var(--primary-color)';
-        } else {
-            opt.style.borderColor = 'transparent';
-            opt.style.boxShadow = 'none';
-            // Default "no image" option logic
-            if (!url && !val) {
-                opt.style.borderColor = 'var(--primary-light)';
-            }
-        }
-    });
+// ==== PACKAGE LESSONS BUILDER (unlimited lessons per package) ====
+let pkgLessonRowCount = 0;
+function addPkgLessonRow(lessonData = null) {
+    pkgLessonRowCount++;
+    const rowId = `pkg-lesson-row-${pkgLessonRowCount}-${Date.now()}`;
+    const container = document.getElementById('pkg-lesson-rows');
+    if (!container) return;
+
+    const hasExam = lessonData ? !!lessonData.examId : false;
+    const hasFile = lessonData ? !!lessonData.fileUrl : false;
+
+    const row = document.createElement('div');
+    row.className = 'pkg-lesson-row glass';
+    row.id = rowId;
+    row.style.cssText = 'padding:16px; border-radius:12px; margin-bottom:14px; border:1px solid var(--glass-border); position:relative;';
+    row.innerHTML = `
+        <button type="button" onclick="document.getElementById('${rowId}').remove();" style="position:absolute; left:12px; top:12px; background:#ef4444; border:none; color:#fff; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">
+            <i class="fas fa-times"></i> حذف الدرس
+        </button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group" style="margin:0;">
+                <label>اسم الدرس</label>
+                <input type="text" class="pkg-lesson-title" placeholder="مثلاً: الدرس الأول - المعادلات" value="${lessonData ? escapeForAttr(lessonData.title) : ''}">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>رابط الدرس (فيديو يوتيوب أو غيره)</label>
+                <input type="text" class="pkg-lesson-url" placeholder="رابط يوتيوب" value="${lessonData ? escapeForAttr(lessonData.url) : ''}">
+            </div>
+        </div>
+
+        <div style="margin-top:12px;">
+            <label style="font-size:0.85rem; color:var(--text-muted);"><i class="fas fa-image"></i> صورة الدرس (اختياري)</label>
+            <input type="file" class="pkg-lesson-image-input" accept="image/*" onchange="handleImageInputUpload(this, '${rowId}-img-preview')" style="display:block; margin-top:5px;">
+            <div id="${rowId}-img-preview" class="pkg-lesson-image-preview" style="margin-top:8px;" data-uploaded-url="${lessonData && lessonData.imageUrl ? lessonData.imageUrl : ''}">
+                ${lessonData && lessonData.imageUrl ? `<img src="${lessonData.imageUrl}" style="max-width:160px; max-height:110px; border-radius:8px; border:1px solid var(--glass-border); display:block;">` : ''}
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:14px;">
+            <div>
+                <label style="font-size:0.85rem; color:var(--text-muted); display:block; margin-bottom:6px;">هل يوجد اختبار لهذا الدرس؟</label>
+                <select class="pkg-lesson-has-exam" onchange="togglePkgLessonExamField(this)" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:var(--input-bg); color:var(--text-primary);">
+                    <option value="no" ${!hasExam ? 'selected' : ''}>لا</option>
+                    <option value="yes" ${hasExam ? 'selected' : ''}>نعم</option>
+                </select>
+                <select class="pkg-lesson-exam-select" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:var(--input-bg); color:var(--text-primary); margin-top:8px; ${hasExam ? '' : 'display:none;'}">
+                    <option value="">اختر الاختبار المرتبط</option>
+                    ${appData.exams.map(e => `<option value="${e.id}" ${lessonData && lessonData.examId === e.id ? 'selected' : ''}>${e.title}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.85rem; color:var(--text-muted); display:block; margin-bottom:6px;">هل توجد مذكرة لهذا الدرس؟</label>
+                <select class="pkg-lesson-has-file" onchange="togglePkgLessonFileField(this)" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:var(--input-bg); color:var(--text-primary);">
+                    <option value="no" ${!hasFile ? 'selected' : ''}>لا</option>
+                    <option value="yes" ${hasFile ? 'selected' : ''}>نعم</option>
+                </select>
+                <input type="text" class="pkg-lesson-file-url" placeholder="رابط المذكرة (PDF)" value="${lessonData && lessonData.fileUrl ? escapeForAttr(lessonData.fileUrl) : ''}" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--glass-border); background:var(--input-bg); color:var(--text-primary); margin-top:8px; ${hasFile ? '' : 'display:none;'}">
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function togglePkgLessonExamField(select) {
+    const field = select.parentElement.querySelector('.pkg-lesson-exam-select');
+    field.style.display = select.value === 'yes' ? 'block' : 'none';
+}
+
+function togglePkgLessonFileField(select) {
+    const field = select.parentElement.querySelector('.pkg-lesson-file-url');
+    field.style.display = select.value === 'yes' ? 'block' : 'none';
 }
 
 async function generatePackageVouchers(pkgId, pkgName) {

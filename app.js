@@ -3779,3 +3779,63 @@ function copyToClipboard(text, el) {
         alert('الكود للنسخ اليدوي: ' + text);
     });
 }
+
+// ==== PWA Install Prompt Banner Handler ====
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    
+    // Check if user dismissed the prompt in the last 24 hours
+    const lastDismissed = localStorage.getItem('pwa-install-dismissed');
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (lastDismissed && (Date.now() - parseInt(lastDismissed) < twentyFourHours)) {
+        return;
+    }
+
+    // Show the custom install banner
+    const pwaBanner = document.getElementById('pwa-install-banner');
+    if (pwaBanner) {
+        pwaBanner.style.display = 'flex';
+    }
+});
+
+// Register event listeners immediately or on DOMContentLoaded
+const initPWABanner = () => {
+    const installBtn = document.getElementById('pwa-install-btn');
+    const closeBtn = document.getElementById('pwa-close-btn');
+    const pwaBanner = document.getElementById('pwa-install-banner');
+
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            if (pwaBanner) pwaBanner.style.display = 'none';
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to PWA prompt: ${outcome}`);
+            deferredPrompt = null;
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            if (pwaBanner) pwaBanner.style.display = 'none';
+            localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+        });
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPWABanner);
+} else {
+    initPWABanner();
+}
+
+window.addEventListener('appinstalled', (evt) => {
+    console.log('App was successfully installed');
+    const pwaBanner = document.getElementById('pwa-install-banner');
+    if (pwaBanner) pwaBanner.style.display = 'none';
+});

@@ -1,0 +1,24 @@
+{
+  "name": "منصة الدحيح التعليمية | رياضيات",
+  "short_name": "الدحيح",
+  "description": "المنصة التعليمية الشاملة للرياضيات مع الأستاذ أحمد جمال رضوان.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e16",
+  "theme_color": "#0081ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "ايقونة التطبيق.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "ايقونة التطبيق.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
